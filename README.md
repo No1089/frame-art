@@ -172,6 +172,37 @@ it is fully unattended. Back up `library/uploaded.json` and `tv-token.txt`
 with the rest of the LXC, since together they are the only state that cannot
 be regenerated.
 
+## Museum labels
+
+The Frame displays no metadata at all for a user uploaded image, so the
+caption is burned into the JPEG at prepare time. Changing anything about it
+means `prepare_images.py --force` followed by a re-upload.
+
+`LABEL_POSITION = "auto"` picks the arrangement from the artwork's
+orientation, because one layout cannot serve both shapes on a 16:9 panel:
+
+- **portrait and square** put the caption in a column beside the artwork,
+  and the two are centred as a pair.
+- **landscape** runs the artwork to the full panel width and tucks the
+  caption beneath its right hand end.
+
+Content follows gallery convention: artist, then title and date in italic,
+then a tombstone of medium and credit line, then the wall text if there is
+room for at least two lines of it. The measure is capped by
+`LABEL_MAX_COLUMN_PX`; without a cap a portrait leaves a column over 1100px
+wide and the blurb sets in 150 character lines.
+
+Blurbs are only as good as the source. AIC's `short_description` is a
+curator written paragraph and is ideal; Cleveland's `description` is
+similar. **The Met publishes no descriptive text whatsoever**, so its works
+carry a tombstone and nothing more. Truncation stops at a sentence boundary
+rather than mid clause, since a caption cut mid clause reads as a bug rather
+than as an edit.
+
+The surround is black for every image (`PAD_COLOUR_OVERRIDE`). Sampling the
+artwork's own border, which is what `PAD_COLOUR_DARKEN` is for, makes the
+wall change tint every time the piece rotates.
+
 ## Fit modes
 
 A 16:9 panel and a portrait canvas cannot both win. `FIT_MODE` picks the
@@ -232,3 +263,24 @@ single flag, so keep it behind its own function.
 5. Keep `library/uploaded.json`. It is the only record mapping local files to
    device content ids, and without it pruning and matte fixes cannot target
    the right items.
+
+## Pairing
+
+`push_to_frame.py` pairs itself on first run and writes `tv-token.txt`. This
+is not as simple as it looks, and the fork does not do it for you:
+
+- The **art channel never raises the allow prompt**. Connecting to
+  `com.samsung.art-app` with no token builds a URL containing the literal
+  string `token=None`, and the TV sits silently for thirty seconds before
+  returning `ms.channel.timeOut`. Nothing appears on screen.
+- The prompt lives on the **remote control channel**,
+  `samsung.remote.control`. `ensure_paired()` opens that channel first,
+  purely to get a token, then closes it.
+- `SamsungTVAsyncArt.get_token()` is documented as doing exactly this, but
+  its body constructs a `SamsungTVWS` and discards it without opening
+  anything, so it is a no-op. Do not rely on it.
+
+The TV must be **on**, not merely plugged in. The Frame leaves the network
+entirely when powered down, so wake on LAN cannot rouse it either: the wifi
+radio is off. `curl http://<host>:8001/api/v2/` is the fastest reachability
+check and needs no pairing.
