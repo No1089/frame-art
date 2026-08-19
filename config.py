@@ -196,9 +196,14 @@ FIT_MODE = "pad"
 
 # For FIT_MODE = "pad". If None, sample the artwork's border pixels.
 # Set to a hex string like "#1a1a1a" to force one colour for every image.
-PAD_COLOUR_OVERRIDE = None
+# Black, deliberately and for every image: on a panel hung as a picture the
+# surround should disappear rather than glow, and a per artwork sampled
+# colour makes the wall change tint every time the piece rotates.
+PAD_COLOUR_OVERRIDE = "#000000"
 
-# Multiply the sampled pad colour by this. Below 1.0 darkens the surround,
+# Multiply the sampled pad colour by this. No effect while
+# PAD_COLOUR_OVERRIDE is set, since that short circuits the sampling.
+# Below 1.0 darkens the surround,
 # which reads as a gallery wall rather than a glowing border.
 PAD_COLOUR_DARKEN = 0.72
 
@@ -208,6 +213,92 @@ ARTWORK_MARGIN_FRACTION = 0.04
 # For FIT_MODE = "blur".
 BLUR_RADIUS_PX = 48
 BLUR_BRIGHTNESS = 0.55
+
+# ---------------------------------------------------------------------------
+# MUSEUM LABEL
+# ---------------------------------------------------------------------------
+# The Frame shows no metadata at all for a user uploaded image: no title, no
+# artist, nothing. The only place a caption can live is in the pixels, so it
+# is burned in at prepare time. Changing any of this means re-running
+# prepare_images.py --force and re-uploading, since the text is part of the
+# JPEG.
+
+LABEL_ENABLED = True
+
+# "auto" picks by orientation, which is the only setting that treats both
+# shapes well on a 16:9 panel:
+#   portrait and square  caption in a column beside the artwork
+#   landscape            artwork runs the full width, caption below it,
+#                        tucked under its right hand end
+# "side" and "bottom" force one layout for everything.
+LABEL_POSITION = "auto"
+
+# Side layout. The artwork is fitted into the panel minus this column, then
+# anchored left, and the caption gets everything left over. A portrait is
+# limited by height, so it leaves a wide column with room for the blurb; a
+# wide landscape is limited by width and leaves exactly the minimum, which
+# holds the artist and title but not a paragraph.
+LABEL_MIN_COLUMN_PX = 400
+
+# Cap on the caption column. Without it a portrait leaves a column over
+# 1100px wide and the blurb sets in 150 character lines, which is unreadable
+# however nice the font is. Artwork and caption are centred as a pair, so the
+# leftover width stays as margin rather than as a hole on the right.
+LABEL_MAX_COLUMN_PX = 660
+LABEL_GAP_PX = 52
+LABEL_EDGE_MARGIN_PX = 56
+
+# Only draw the blurb when the column is at least this wide. Below it the
+# text wraps to two or three words a line and looks like a ransom note.
+LABEL_BLURB_MIN_COLUMN_PX = 470
+
+# Landscape layout. The caption sits below the artwork, its right edge
+# aligned with the artwork's, and the pair is centred vertically. A very wide
+# painting leaves room to spare below it and earns a blurb; a 4:3 one is
+# limited by height instead and gets the tombstone only.
+LABEL_CAPTION_GAP_PX = 42
+LABEL_MIN_STRIP_PX = 150
+LABEL_BLURB_MIN_STRIP_PX = 250
+
+# Forced "bottom" layout only: strip height as a fraction of panel height.
+LABEL_HEIGHT_FRACTION = 0.11
+
+# Gallery convention: artist on the first line, then title and date. Keep the
+# second line dimmer so the eye lands on the painting, not the caption.
+LABEL_ARTIST_COLOUR = "#e6e2d9"
+LABEL_DETAIL_COLOUR = "#8d877c"
+LABEL_ARTIST_SIZE_PX = 31
+LABEL_DETAIL_SIZE_PX = 26
+LABEL_LINE_GAP_PX = 9
+
+# Tombstone is the medium and credit line. Blurb is the wall text.
+LABEL_TOMBSTONE_COLOUR = "#6f6a61"
+LABEL_TOMBSTONE_SIZE_PX = 20
+LABEL_BLURB_COLOUR = "#8d877c"
+LABEL_BLURB_SIZE_PX = 20
+LABEL_BLURB_LINE_SPACING = 1.45
+LABEL_PARAGRAPH_GAP_PX = 26
+
+# First path that exists wins. macOS first, then the Debian packages an LXC
+# would have, then Pillow's built-in as a last resort.
+LABEL_FONT_CANDIDATES = [
+    "/System/Library/Fonts/Supplemental/Georgia.ttf",
+    "/System/Library/Fonts/Palatino.ttc",
+    "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
+]
+LABEL_FONT_ITALIC_CANDIDATES = [
+    "/System/Library/Fonts/Supplemental/Georgia Italic.ttf",
+    "/System/Library/Fonts/Supplemental/Times New Roman Italic.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf",
+]
+
+# Museum credit lines are noise on a wall: strip "(French, 1848-1894)" and
+# similar trailing parentheticals from the artist name. Cleveland attaches
+# these to every creator string.
+LABEL_STRIP_ARTIST_PARENTHETICAL = True
 
 # ---------------------------------------------------------------------------
 # OUTPUT ENCODING

@@ -27,7 +27,9 @@ Usage:
 import argparse
 import hashlib
 import json
+import re
 import time
+from html import unescape
 from pathlib import Path
 
 import requests
@@ -55,6 +57,19 @@ def _post(url, payload):
     return response
 
 
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def plain_text(html):
+    """Museum blurbs arrive as HTML. The label draws plain text."""
+    if not html:
+        return ""
+    text = " ".join(unescape(_TAG_RE.sub(" ", html)).split())
+    # Tags become spaces, so "<em>The Child's Bath</em>, one of" would leave
+    # "Bath , one of". Pull punctuation back onto the preceding word.
+    return re.sub(r"\s+([,.;:!?])", r"\1", text)
+
+
 def type_allowed(type_name):
     if not config.ARTWORK_TYPES:
         return True
@@ -69,7 +84,9 @@ def type_allowed(type_name):
 # ---------------------------------------------------------------------------
 
 AIC_FIELDS = ["id", "title", "artist_title", "date_display", "image_id",
-              "is_public_domain", "style_titles", "artwork_type_title"]
+              "is_public_domain", "style_titles", "artwork_type_title",
+              "short_description", "description", "medium_display",
+              "credit_line"]
 AIC_SEARCH = "https://api.artic.edu/api/v1/artworks/search"
 
 
@@ -104,6 +121,13 @@ def _aic_run(must, limit):
             "artist": item.get("artist_title") or "Unknown",
             "date": item.get("date_display") or "",
             "style": ", ".join(item.get("style_titles") or []),
+            # short_description is a curator written single paragraph, which
+            # is exactly a wall label. description is the long form essay and
+            # is the fallback.
+            "blurb": plain_text(item.get("short_description")
+                                or item.get("description")),
+            "medium": item.get("medium_display") or "",
+            "credit": item.get("credit_line") or "",
             # Not full/full: AIC returns 403 for both that and full/max.
             # See config.AIC_IMAGE_SIZE.
             "image_url": (f"https://www.artic.edu/iiif/2/{item['image_id']}"
@@ -199,6 +223,11 @@ def _met_collect(params, limit, artist_filter=None):
             "artist": artist_name or "Unknown",
             "date": item.get("objectDate") or "",
             "style": item.get("period") or item.get("culture") or "",
+            # The Met publishes no descriptive text of any kind, so Met works
+            # get a tombstone only and no blurb.
+            "blurb": "",
+            "medium": item.get("medium") or "",
+            "credit": item.get("creditLine") or "",
             "image_url": item["primaryImage"],
         })
     return results
@@ -278,6 +307,10 @@ def _cma_collect(params, limit):
             "artist": creators or "Unknown",
             "date": item.get("creation_date") or "",
             "style": item.get("culture") and ", ".join(item["culture"]) or "",
+            "blurb": plain_text(item.get("description")
+                                or item.get("did_you_know")),
+            "medium": item.get("technique") or "",
+            "credit": item.get("creditline") or "",
             "image_url": best["url"],
         })
     return results
