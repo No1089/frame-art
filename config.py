@@ -44,6 +44,21 @@ ARTWORK_TYPES = ["Painting", "Drawing and Watercolor"]
 # Reject anything whose native long edge is below this many pixels.
 MIN_SOURCE_LONG_EDGE_PX = 1400
 
+# IIIF size for Art Institute downloads. Their server returns 403 for both
+# "full/full" and "full/max", so an explicit size is mandatory rather than a
+# preference. "!w,h" means best fit inside that box with the aspect ratio
+# kept, so this yields a 2560px long edge whatever the orientation, which is
+# ample for a 1920x1080 panel and keeps files near a megabyte.
+AIC_IMAGE_SIZE = "!2560,2560"
+
+# Cleveland publishes three derivatives per work and the API calls the
+# preservation master "full". That is a TIFF, and it can run to hundreds of
+# megabytes: 1958.39_full.tif is 483 MB. Downloading those to feed a 1920x1080
+# panel would be absurd, so prefer "print", a few megabyte JPEG at print
+# resolution. "web" is around 800px, under MIN_SOURCE_LONG_EDGE_PX, so it is
+# only a fallback and prepare_images will usually reject it anyway.
+CMA_IMAGE_PREFERENCE = ["print", "web"]
+
 # Only accept works flagged public domain / CC0 by the source API.
 REQUIRE_PUBLIC_DOMAIN = True
 

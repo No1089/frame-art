@@ -104,9 +104,10 @@ def _aic_run(must, limit):
             "artist": item.get("artist_title") or "Unknown",
             "date": item.get("date_display") or "",
             "style": ", ".join(item.get("style_titles") or []),
-            # full/full requests the largest derivative the IIIF server holds
+            # Not full/full: AIC returns 403 for both that and full/max.
+            # See config.AIC_IMAGE_SIZE.
             "image_url": (f"https://www.artic.edu/iiif/2/{item['image_id']}"
-                          f"/full/full/0/default.jpg"),
+                          f"/full/{config.AIC_IMAGE_SIZE}/0/default.jpg"),
         })
     return results
 
@@ -261,8 +262,10 @@ def _cma_collect(params, limit):
         if len(results) >= limit:
             break
         images = item.get("images") or {}
-        best = images.get("full") or images.get("print") or images.get("web")
-        if not best or not best.get("url"):
+        # Deliberately not "full": see config.CMA_IMAGE_PREFERENCE.
+        best = next((images[key] for key in config.CMA_IMAGE_PREFERENCE
+                     if (images.get(key) or {}).get("url")), None)
+        if not best:
             continue
         if not type_allowed(item.get("type")):
             continue
