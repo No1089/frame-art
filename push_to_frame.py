@@ -50,12 +50,29 @@ def save_manifest(manifest):
     path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
 
 
+OFFLINE_HINT = (
+    "The Frame leaves the network completely when it is powered down, rather "
+    "than staying reachable the way standby and art mode do, and wake on LAN "
+    "cannot rouse it because the wifi radio is off as well. Switch the TV on "
+    "and run this again."
+)
+
+
 async def connect():
-    tv = SamsungTVAsyncArt(host=config.TV_HOST,
-                           port=config.TV_PORT,
-                           token_file=config.TV_TOKEN_FILE,
-                           name="frame-art-pipeline")
-    await tv.start_listening()
+    # Constructing SamsungTVAsyncArt already performs a REST call, so an
+    # unreachable TV raises here rather than at start_listening. Both are
+    # turned into one actionable line: a weekly timer firing at a switched
+    # off TV should not be sixty lines of urllib3 traceback in the journal.
+    try:
+        tv = SamsungTVAsyncArt(host=config.TV_HOST,
+                               port=config.TV_PORT,
+                               token_file=config.TV_TOKEN_FILE,
+                               name="frame-art-pipeline")
+        await tv.start_listening()
+    except Exception as error:
+        raise SystemExit(
+            f"cannot reach the TV at {config.TV_HOST}:{config.TV_PORT}: "
+            f"{type(error).__name__}: {error}\n{OFFLINE_HINT}")
     return tv
 
 
