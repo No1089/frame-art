@@ -2,10 +2,16 @@
 Central configuration for the Frame TV art pipeline.
 Every tunable is a named variable. Nothing is hardcoded downstream.
 
-Target hardware: Samsung The Frame, 32 inch, 2024.
+Target hardware: Samsung The Frame, 32 inch. Confirmed on the wire as
+QE32LS03CBUXXH, model string 23_KANTSU2E_FTV_OS80, i.e. the 2023 LS03C
+on Tizen OS 8, not the 2024 LS03D the original brief assumed. Inside the
+NickWaterton fork's 2021-2024 support range either way.
+
 NOTE: the 32 inch Frame is a Full HD panel (1920x1080), NOT 4K.
 All larger sizes are 3840x2160. Do not "upgrade" the target
 resolution without checking the model number on the back plate.
+The TV itself reports "resolution": "1920x1080" at
+http://<host>:8001/api/v2/ if you want to re-confirm.
 """
 
 # ---------------------------------------------------------------------------
@@ -42,7 +48,7 @@ MIN_SOURCE_LONG_EDGE_PX = 1400
 REQUIRE_PUBLIC_DOMAIN = True
 
 # Contact string sent in User-Agent. The Art Institute asks for this.
-HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; contact@example.com)"
+HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; you@example.com)"
 
 # Seconds between requests to any single API host.
 # The Art Institute asks for no more than one request per second.
@@ -205,7 +211,7 @@ MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 # THE FRAME
 # ---------------------------------------------------------------------------
 
-TV_HOST = "192.0.2.10"            # set to the TV's reserved DHCP address
+TV_HOST = "192.0.2.10"          # give this a DHCP reservation in UniFi
 TV_PORT = 8002                      # 8002 is the TLS websocket endpoint
 TV_TOKEN_FILE = "./tv-token.txt"    # created on first successful pairing
 

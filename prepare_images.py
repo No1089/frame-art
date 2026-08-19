@@ -7,7 +7,7 @@ the TV rescales with an unknown kernel, so matching exactly is predictable.
 
 Usage:
     python prepare_images.py
-    python prepare_images.py --fit blur --preview
+    python prepare_images.py --fit blur --force
 """
 
 import argparse
