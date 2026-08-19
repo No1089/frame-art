@@ -1,0 +1,8 @@
+[Unit]
+Description=Show the next piece on the Frame TV
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/frame-art
+ExecStart=/opt/frame-art/.venv/bin/python push_to_frame.py --rotate --quiet-if-offline

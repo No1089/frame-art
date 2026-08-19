@@ -21,6 +21,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import random
 from pathlib import Path
 
 from samsungtvws import SamsungTVWS
@@ -238,6 +239,52 @@ async def cmd_upload(tv, force_all=False, limit=None, select_first=False):
     print(f"\n{len(manifest)} items tracked in {config.UPLOAD_MANIFEST_FILE}")
 
 
+ROTATE_STATE_FILE = "./library/last-shown.txt"
+
+
+async def cmd_rotate(tv):
+    """Show a random work from the library, chosen by us rather than the TV.
+
+    The TV's own rotation is not usable here. set_slideshow_status only
+    accepts 3, 15, 60 or 1440 minutes, rejects anything else with error -7,
+    and on this firmware does not persist: it acknowledges the write and
+    then reads back 'off' with an empty category. set_auto_rotation_status
+    is not supported by this model at all. Meanwhile art mode falls back to
+    the Art Store category, so the wall shows stock landscapes.
+
+    Driving select_image from a timer sidesteps all of that and gives any
+    interval we like, at the cost of one websocket connection per change.
+    """
+    manifest = load_manifest()
+    choices = [entry["content_id"] for entry in manifest.values()
+               if entry.get("content_id")]
+    if not choices:
+        print("nothing in the manifest to show")
+        return
+
+    # Avoid repeating the piece that is already up, which at five minute
+    # intervals a plain random choice would do noticeably often.
+    state = Path(ROTATE_STATE_FILE)
+    try:
+        last = state.read_text().strip()
+    except OSError:
+        last = ""
+    pool = [c for c in choices if c != last] or choices
+    pick = random.choice(pool)
+
+    await tv.select_image(pick, category=USER_CATEGORY, show=True)
+    try:
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(pick)
+    except OSError:
+        pass
+
+    entry = next((e for e in manifest.values()
+                  if e.get("content_id") == pick), {})
+    artist = (entry.get("artist") or "").split(" (")[0]
+    print(f"showing {pick}  {artist} - {entry.get('title')}")
+
+
 async def cmd_slideshow(tv, minutes):
     """Point art mode at our uploads and let it shuffle them.
 
@@ -341,14 +388,27 @@ async def main():
                         help="stop after this many uploads")
     parser.add_argument("--select", action="store_true",
                         help="display the first newly uploaded piece")
+    parser.add_argument("--rotate", action="store_true",
+                        help="show one random work; drive this from a timer "
+                             "instead of the TV's own broken slideshow")
+    parser.add_argument("--quiet-if-offline", action="store_true",
+                        help="exit 0 when the TV is unreachable, for timers")
     parser.add_argument("--slideshow", type=int, metavar="MINUTES",
                         help="shuffle art mode through the uploaded library, "
                              "changing every MINUTES; 0 turns rotation off")
     args = parser.parse_args()
 
-    tv = await connect()
     try:
-        if args.slideshow is not None:
+        tv = await connect()
+    except SystemExit:
+        if args.quiet_if_offline:
+            print("TV is not reachable; nothing to do")
+            return
+        raise
+    try:
+        if args.rotate:
+            await cmd_rotate(tv)
+        elif args.slideshow is not None:
             await cmd_slideshow(tv, args.slideshow)
         elif args.check:
             await cmd_check(tv)
