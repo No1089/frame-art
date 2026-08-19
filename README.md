@@ -209,6 +209,25 @@ Caddy on CT 102 reverse proxies to it by hostname through UniFi DNS, the same
 dynamic upstream pattern as Jellyfin and Immich, so the container keeps its
 DHCP lease and nothing hardcodes an IP.
 
+## The other TV
+
+The second TV has no art mode, so it gets the library as a plain video file
+instead: `make_slideshow.py` concatenates the prepared JPEGs into an H.264
+MP4 at `/mnt/media/Gallery`, which Jellyfin serves as its own Gallery
+library and Swiftfin or Infuse play like anything else.
+
+**A file, not a live stream, and H.264 on purpose.** A live HLS or RTSP feed
+would need an encoder running continuously; a pre-rendered file needs none.
+More to the point, encoding to H.264 High in yuv420p with a silent AAC track
+is what an Apple TV direct plays, so Jellyfin never transcodes it. That
+matters on this host, which has a history of hard locking on hardware
+accelerated video decode: the safest video is video nothing has to decode
+twice.
+
+The prepared JPEGs are already 1920x1080 with the caption burned in, so the
+render is a straight concatenation with no rescaling, and it regenerates
+with the monthly timer.
+
 ## Running on arrakis
 
 It runs in **CT 108 `frame-art`**, an unprivileged Debian 13 container, 2
