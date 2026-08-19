@@ -1,8 +1,15 @@
 # Frame TV art pipeline: handoff brief
 
-Target: Samsung The Frame, 32 inch, 2024. Goal is a local library of public
+Target: Samsung The Frame, 32 inch. Goal is a local library of public
 domain museum artwork, correctly sized, pushed over the network with the
 matte overlay disabled, without paying for the Art Store subscription.
+
+The panel on the wall probes as `QE32LS03CBUXXH`, model string
+`23_KANTSU2E_FTV_OS80`: the **2023 LS03C** on Tizen OS 8, not the 2024 LS03D
+this brief originally assumed. It makes no difference to the code, the fork
+covers 2021 through 2024, but do not go looking for LS03D specific
+behaviour. The TV self-reports `"resolution": "1920x1080"`, which settles
+the Full HD question below.
 
 Three stages, three scripts, one config file. Intended to run unattended on
 the Proxmox host.
@@ -29,7 +36,8 @@ python fetch_art.py --list-categories
 python fetch_art.py --category impressionism --dry-run   # inspect the picks
 python fetch_art.py
 python prepare_images.py
-python push_to_frame.py --check     # do this before the first real upload
+python push_to_frame.py --check           # do this before the first real upload
+python push_to_frame.py --limit 1 --select   # one image, then look at the wall
 python push_to_frame.py
 ```
 
@@ -50,7 +58,13 @@ three museums do not share a movement vocabulary:
   endpoint is Elasticsearch backed and takes a query DSL body, so category
   filtering there is exact. This is the source to trust for style queries.
 - **The Met** has no style field at all. A category becomes a keyword search
-  narrowed by `dateBegin`/`dateEnd` and `departmentId`.
+  narrowed by `dateBegin`/`dateEnd` and `departmentId`. Three of its
+  behaviours are actively hostile and all three are handled in
+  `fetch_art.py`, so read the comment block above `MET_BASE` before touching
+  that code. In short: `/search` only honours filters when `q` is the *first*
+  parameter, `artistOrCulture=true` silently returns nothing for many
+  artists, and paintings often carry an empty `classification` with a usable
+  `objectName`.
 - **Cleveland** likewise. Keyword plus `created_after`/`created_before` plus
   `department`.
 
@@ -76,7 +90,15 @@ than hardcoding ids that can rot.
 
 **The 32 inch Frame is 1920x1080, not 4K.** Every other size in the range is
 3840x2160, so almost all published Frame image-prep advice targets the wrong
-resolution for this panel. Config is set correctly.
+resolution for this panel. Config is set correctly, and the TV confirms it:
+
+```bash
+curl -s http://192.0.2.10:8001/api/v2/ | python3 -m json.tool
+# "resolution": "1920x1080", "FrameTVSupport": "true", "modelName": "QE32LS03CBUXXH"
+```
+
+That endpoint needs no pairing and is the fastest way to check the TV is
+reachable before debugging anything websocket shaped.
 
 **Use the NickWaterton fork, not the PyPI `samsungtvws` package.** The
 upstream package predates the 2024 art API changes. The fork states support
@@ -92,10 +114,20 @@ python -c "import samsungtvws, os; print(os.path.dirname(samsungtvws.__file__))"
 # delete_list, select_image, set_artmode
 ```
 
-Assumed: `upload(data, file_type=, matte=, portrait_matte=)` returns a
-content id, and `change_matte(content_id, matte_id=)` alters an existing item.
-Call `get_matte_list()` once and confirm `none` is the literal accepted value
-on this firmware rather than `no_matte` or similar.
+Verified against the installed source, which was byte identical to upstream
+master at the time of writing: `upload(file, matte=, portrait_matte=,
+file_type=, timeout=)` and `change_matte(content_id, matte_id=,
+portrait_matte=)` are as assumed, and `upload` lowercases `"JPEG"` to `"jpg"`
+itself. `push_to_frame.py --check` now prints `get_matte_list()` and says
+whether `config.MATTE` appears in it, so the `none` versus `no_matte`
+question answers itself rather than being assumed.
+
+**`upload()` can return `None` for an image that uploaded fine.** It waits
+for an `image_added` event and gives up after its timeout, so a slow upload
+over wifi yields a null content id. That null used to go straight into
+`uploaded.json`, which permanently breaks `--fix-mattes` and `--prune` for
+that item. `push_to_frame.py` now recovers the id by diffing the device's
+content list and refuses to record a null.
 
 **First connection needs physical confirmation.** The TV shows an allow
 prompt. Accept it on the remote, after which the token in `TV_TOKEN_FILE`
@@ -169,6 +201,19 @@ canvases glare in a dim room.
 | `aic` | Art Institute of Chicago | `is_public_domain` | Real style facet, exact |
 | `met` | Metropolitan Museum | `isPublicDomain` | None, approximated by department and date |
 | `cma` | Cleveland Museum of Art | `cc0=1` | None, approximated by department and date |
+
+Expect roughly 25 works from AIC, low single digits from the Met and a
+dozen or so from Cleveland for a typical preset. The Met is the weakest of
+the three by a distance: once its filters are actually applied, a search for
+`Mary Cassatt` inside European Paintings returns five works, none of them by
+Cassatt. Its contribution is small but the pieces it does yield are strong.
+
+**Image derivatives are not interchangeable, and the obvious choice is wrong
+in both cases.** AIC returns 403 for `full/full` *and* `full/max`, so an
+explicit IIIF size is mandatory: see `config.AIC_IMAGE_SIZE`. Cleveland's
+`images.full` is the preservation master and is a TIFF that can exceed
+480 MB for one painting, so `config.CMA_IMAGE_PREFERENCE` asks for `print`
+instead. Neither of these can be caught without running against live data.
 
 Worth adding if coverage is thin: National Gallery of Art open access,
 Harvard Art Museums, Smithsonian Open Access, and Wikimedia Commons as a
