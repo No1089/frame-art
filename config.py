@@ -355,7 +355,15 @@ MATTE = "none"
 PORTRAIT_MATTE = "none"
 
 # Delete previously uploaded items that are no longer in the local library.
-PRUNE_REMOTE = False
+# On for the monthly rotation: without it last month's theme stays on the TV
+# for ever. Only content ids this pipeline recorded are ever deleted, so
+# anything uploaded by hand is safe.
+PRUNE_REMOTE = True
+
+# Refuse a prune that would remove more than this share of tracked items. A
+# fetch that half failed leaves a short catalogue, and reconciling against it
+# would otherwise strip the wall bare.
+PRUNE_MAX_FRACTION = 0.5
 
 # ---------------------------------------------------------------------------
 # PATHS
@@ -365,3 +373,168 @@ RAW_DIR = "./library/raw"
 PREPARED_DIR = "./library/prepared"
 METADATA_FILE = "./library/catalogue.json"
 UPLOAD_MANIFEST_FILE = "./library/uploaded.json"
+
+# ---------------------------------------------------------------------------
+# SEASONAL THEMES
+# ---------------------------------------------------------------------------
+# The library is a permanent core plus a monthly overlay. The core is the
+# ARTISTS roster above and stays on the wall all year; a theme is layered over
+# it and swapped each month, so a thin month never leaves the wall empty.
+#
+# Themes deliberately reach outside Impressionism. The movement painted summer
+# and snow far more often than it painted October, so the autumn months widen
+# to Barbizon, the Hudson River School and ukiyo-e rather than return six
+# sparse results and call it a season.
+#
+# A theme is the same shape as a CATEGORIES preset, so met and cma reuse the
+# category searchers unchanged. Only AIC gains anything: subject_titles is a
+# real controlled vocabulary facet and can be matched exactly, the way
+# style_titles is. A Monet haystack carries subject_titles of seasons, nature,
+# farm, trees, hills, landscapes and rural life, which is precisely the
+# vocabulary a seasonal theme wants.
+#
+#   aic_subjects   exact values matched against AIC subject_titles.keyword
+#   terms          free text for met and cma, and for AIC when aic_subjects
+#                  is empty
+#   artist_hints   representative painters; for met and cma these carry the
+#                  precision that the missing subject facet cannot
+
+THEME_ENABLED = True
+
+# Kept per theme, per source. Smaller than the core on purpose: the theme is
+# a seasonal accent over a permanent collection, not a replacement for it.
+MAX_PER_THEME_PER_SOURCE = 8
+
+THEMES = {
+    1: {
+        "name": "winter light",
+        "terms": ["snow winter landscape"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["winter", "snow"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Claude Monet", "Alfred Sisley", "Camille Pissarro",
+                         "Utagawa Hiroshige", "Pieter Bruegel"],
+    },
+    2: {
+        # The thinnest month of the twelve. mothers was dropped from the
+        # subjects: it is a 117 work facet and almost all of it is
+        # Madonnas and Holy Families, which is not what February wants. Public domain holdings skew to
+        # mother and child and to courtship rather than to romance, so this
+        # reads as tenderness and domestic intimacy. Cassatt and Morisot
+        # carry it. Expect to hand cull.
+        "name": "love and intimacy",
+        "terms": ["couple lovers embrace"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["love", "couples"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Mary Cassatt", "Berthe Morisot",
+                         "Pierre-Auguste Renoir", "Henri de Toulouse-Lautrec",
+                         "Jean-Honore Fragonard"],
+    },
+    3: {
+        "name": "thaw",
+        "terms": ["thaw river flood early spring"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["rivers", "seasons"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Alfred Sisley", "Claude Monet", "Charles Daubigny",
+                         "Camille Corot"],
+    },
+    4: {
+        "name": "blossom and gardens",
+        "terms": ["blossom orchard garden flowering tree"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["gardens", "parks"],
+        "met_departments": ["European Paintings", "Asian Art"],
+        "cma_departments": ["Japanese Art"],
+        "artist_hints": ["Claude Monet", "Vincent van Gogh",
+                         "Utagawa Hiroshige", "Katsushika Hokusai"],
+    },
+    5: {
+        "name": "flowers and promenades",
+        "terms": ["flowers still life park promenade"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["gardens", "fruit"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Pierre-Auguste Renoir", "Henri Fantin-Latour",
+                         "Edouard Manet", "Gustave Caillebotte"],
+    },
+    6: {
+        "name": "water and boating",
+        "terms": ["boats sailing river regatta"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["boats", "sailing", "rivers"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Claude Monet", "Gustave Caillebotte",
+                         "Alfred Sisley", "Camille Pissarro"],
+    },
+    7: {
+        "name": "seaside",
+        "terms": ["beach seaside coast cliffs"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["beaches", "oceans", "boats"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Claude Monet", "Eugene Boudin", "Berthe Morisot",
+                         "Winslow Homer"],
+    },
+    8: {
+        "name": "harvest",
+        "terms": ["harvest wheat field haystack"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["farm", "seasons"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Claude Monet", "Camille Pissarro",
+                         "Jean-Francois Millet", "Vincent van Gogh"],
+    },
+    9: {
+        "name": "late light",
+        "terms": ["vineyard orchard fruit late summer"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["fruit", "farm"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Paul Cezanne", "Vincent van Gogh",
+                         "Camille Pissarro", "Gustave Caillebotte"],
+    },
+    10: {
+        # Impressionism is thin here, so this one reaches out to Barbizon and
+        # the Hudson River School on purpose.
+        "name": "autumn colour",
+        "terms": ["autumn forest falling leaves"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["autumn", "forests"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Camille Corot", "Theodore Rousseau",
+                         "Jasper Francis Cropsey", "Frederic Edwin Church",
+                         "Vincent van Gogh"],
+    },
+    11: {
+        "name": "rain and fog",
+        "terms": ["rain fog mist wet street nocturne"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["rain", "cities"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["Gustave Caillebotte", "James McNeill Whistler",
+                         "Camille Pissarro", "J. M. W. Turner",
+                         "Utagawa Hiroshige"],
+    },
+    12: {
+        "name": "night and interiors",
+        "terms": ["night interior lamplight evening"],
+        "year_from": 1600, "year_to": 1950,
+        "aic_subjects": ["night", "interiors"],
+        "met_departments": ["European Paintings"],
+        "cma_departments": ["European Painting and Sculpture"],
+        "artist_hints": ["James McNeill Whistler", "Edgar Degas",
+                         "Vincent van Gogh", "Vilhelm Hammershoi"],
+    },
+}

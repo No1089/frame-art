@@ -1,8 +1,10 @@
 [Unit]
-Description=Refresh the Frame TV art library weekly
+Description=Rotate the Frame TV art library for the new month
 
 [Timer]
-OnCalendar=Sun 04:00
+# Monthly, not weekly: the library is a permanent core plus one seasonal
+# theme, and the theme only changes when the month does.
+OnCalendar=*-*-01 04:00:00
 Persistent=true
 RandomizedDelaySec=1800
 

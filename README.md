@@ -149,10 +149,79 @@ https://data.rijksmuseum.nl/docs/ and add `rijks` searchers following the
 shape of the existing ones. Do not port old example code, it targets dead
 endpoints.
 
+## Seasonal themes
+
+The library is a **permanent core plus a monthly overlay**. The core is the
+`ARTISTS` roster and stays on the wall all year. One theme from `THEMES` is
+layered over it and swapped when the month turns, so a thin month never
+leaves the wall empty.
+
+```bash
+python fetch_art.py --list-themes
+python fetch_art.py --theme-only --month 2 --source aic --dry-run
+python fetch_art.py                 # core + this month, what the timer runs
+python fetch_art.py --no-theme      # core only
+```
+
+A theme is the same shape as a `CATEGORIES` preset, so the Met and Cleveland
+searchers serve both unchanged. Only AIC gains anything, and it gains a lot:
+`subject_titles` is a real controlled vocabulary and can be matched exactly
+via `subject_titles.keyword`.
+
+**The vocabulary is smaller and blunter than it looks, so measure before you
+trust a term.** Counts below are public domain totals taken 2026-08-19:
+
+- `spring`, `harvest` and `fog` **do not exist**. Zero hits, silently.
+- `streets` exists with exactly one work, which is no use.
+- `trees` (432), `women` (448), `children` (403), `flowers` (658),
+  `water` (264) and `landscapes` (388) are too broad to discriminate. Because
+  a `terms` clause is an OR, one broad value drags the whole theme back to
+  the same famous canvases: an early draft of the October theme returned
+  *A Sunday on La Grande Jatte* because `trees` outvoted `autumn`.
+- The useful ones are narrow: `autumn` 5, `rain` 8, `rivers` 10, `snow` 13,
+  `night` 15, `seasons` 16, `forests` 17, `gardens` 19, `farm` 20,
+  `winter` 21, `interiors` 21, `couples` 22, `love` 33.
+
+**February is the weakest month of the twelve** and will need hand-culling.
+Public domain holdings have little romantic love in them; `mothers` looks
+promising at 117 works but is almost entirely Madonnas and Holy Families, so
+it is deliberately excluded. What is left leans on `love` and `couples`, and
+still admits the occasional Botticelli Virgin.
+
+Rotation depends on `--prune`, which reconciles the device against the
+**catalogue** rather than the manifest. The manifest accumulates every work
+ever uploaded, so pruning against it would never retire last month's theme.
+`PRUNE_REMOTE` is on for this reason, bounded by `PRUNE_MAX_FRACTION` so a
+half failed fetch cannot strip the wall.
+
+## Web gallery
+
+The same library is browsable at **https://example.com**, which is what
+the iPads use. A Flask app on CT 108 serves the catalogue as JSON and a
+2048px derivative of each work, cached on first request.
+
+It deliberately serves the **raw artwork, not the TV renders**: those are
+1920x1080 with black bars and a caption burned in at a size chosen for a 32
+inch panel seen from across a room. A browser can lay the caption out itself
+and let the artwork fill whatever shape the screen happens to be.
+
+Caddy on CT 102 reverse proxies to it by hostname through UniFi DNS, the same
+dynamic upstream pattern as Jellyfin and Immich, so the container keeps its
+DHCP lease and nothing hardcodes an IP.
+
 ## Running on arrakis
 
-An unprivileged Debian LXC is enough. No GPU, no special mounts. Pillow does
-the resizing on CPU and a few hundred images take seconds.
+It runs in **CT 108 `frame-art`**, an unprivileged Debian 13 container, 2
+cores, 2 GB, 8 GB disk, DHCP so UniFi tracks it. No GPU, no special mounts.
+Pillow does the resizing on CPU and a few hundred images take seconds.
+
+**Run it here rather than on a Mac with Sophos on it.** CryptoGuard treats
+this pipeline as ransomware, which is a fair reading: it reads and rewrites a
+few hundred JPEGs in a tight loop. The denials escalate through a run, from
+one image, to most raw reads, to the catalogue write itself, and they arrive
+as `EPERM` from `open()` rather than as anything that names the real cause.
+Network calls to the museums start timing out too. The retries in
+`prepare_images.py` and `fetch_art.py` are mitigation, not a fix.
 
 ```bash
 apt install -y python3-venv python3-dev libjpeg-dev zlib1g-dev git
@@ -161,13 +230,15 @@ apt install -y python3-venv python3-dev libjpeg-dev zlib1g-dev git
 The container needs a route to the TV on the the TV subnet subnet and outbound
 HTTPS to the museum APIs. No inbound ports.
 
-Stage the tree with `pct push` as usual, then wire a timer if you want the
-library to refresh periodically. `run_pipeline.sh` chains all three stages and
-exits non-zero on the first failure, so a systemd timer or a cron entry can
-drive it directly. Unit files are in `deploy/`.
+`run_pipeline.sh` chains all three stages and exits non-zero on the first
+failure. The timer is **monthly**, not weekly: the core does not change and
+the theme only turns over when the month does. Unit files are in `deploy/`,
+covering the pipeline, its timer, and the web gallery.
 
-Note that the first run must be interactive, or at least run while you can
-reach the remote, because of the pairing prompt. After the token file exists
+**The token does not travel.** Copying `tv-token.txt` to a new host does not
+work: the TV binds it to the connecting client and the art channel simply
+times out. Each host pairs once, on its own. The first run must therefore be
+interactive, or at least run while you can reach the remote. After the token file exists
 it is fully unattended. Back up `library/uploaded.json` and `tv-token.txt`
 with the rest of the LXC, since together they are the only state that cannot
 be regenerated.

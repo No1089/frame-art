@@ -5,9 +5,12 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=frameart
 WorkingDirectory=/opt/frame-art
 ExecStart=/opt/frame-art/run_pipeline.sh
-# The pipeline is idempotent. Already downloaded, prepared and uploaded
-# items are skipped via catalogue.json and uploaded.json.
-TimeoutStartSec=3600
+# Fetch walks three museum APIs at one request per second, so an hour is not
+# generous. The pipeline is idempotent: already downloaded, prepared and
+# uploaded items are skipped via catalogue.json and uploaded.json.
+TimeoutStartSec=7200
+
+[Install]
+WantedBy=multi-user.target

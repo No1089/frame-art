@@ -238,6 +238,29 @@ async def cmd_upload(tv, force_all=False, limit=None, select_first=False):
     print(f"\n{len(manifest)} items tracked in {config.UPLOAD_MANIFEST_FILE}")
 
 
+async def cmd_slideshow(tv, minutes):
+    """Point art mode at our uploads and let it shuffle them.
+
+    Without this the TV keeps showing whatever art mode was last set to,
+    which out of the box is the Art Store default category. Uploading and
+    even selecting an image does not change that: select_image sets the
+    current artwork, but entering art mode with the power button falls back
+    to the rotation setting, so the wall shows a stock landscape and none of
+    the library. Category 2 is MY-C0002, the user pictures.
+    """
+    before = await tv.get_slideshow_status()
+    print(f"slideshow was: value={before.get('value')} "
+          f"category={before.get('category_id')!r} type={before.get('type')!r}")
+    if minutes:
+        await tv.set_slideshow_status(duration=minutes, type=True, category=2)
+    else:
+        await tv.set_slideshow_status(duration=0, type=True, category=2)
+    await asyncio.sleep(2)
+    after = await tv.get_slideshow_status()
+    print(f"slideshow now: value={after.get('value')} "
+          f"category={after.get('category_id')!r} type={after.get('type')!r}")
+
+
 async def cmd_fix_mattes(tv):
     """Re-assert matte none on everything already on the device."""
     manifest = load_manifest()
@@ -255,21 +278,56 @@ async def cmd_fix_mattes(tv):
 
 
 async def cmd_prune(tv):
+    """Make the device match the catalogue, not merely the manifest.
+
+    Monthly rotation depends on this. The manifest accumulates every work
+    ever uploaded, so pruning against it would never remove last month's
+    theme; the catalogue is the statement of what the library should be
+    right now, so that is what the device is reconciled against.
+
+    Anything on the device that this pipeline never uploaded is left alone:
+    only content ids the manifest claims are ever deleted.
+    """
     manifest = load_manifest()
     if not manifest:
         # Every user picture on the device would look stale, including any
         # put there by hand. Refuse rather than empty the gallery.
         print("manifest is empty, refusing to prune")
         return
-    keep = {entry.get("content_id") for entry in manifest.values()}
-    remote = await tv.available(USER_CATEGORY)
-    stale = [item["content_id"] for item in remote
-             if item.get("content_id") not in keep]
+
+    try:
+        catalogue = json.loads(Path(config.METADATA_FILE).read_text())
+    except (OSError, ValueError) as error:
+        print(f"cannot read the catalogue ({error}), refusing to prune")
+        return
+    wanted = {r.get("prepared_path") for r in catalogue if r.get("prepared_path")}
+
+    ours = {entry.get("content_id") for entry in manifest.values()
+            if entry.get("content_id")}
+    keep = {entry["content_id"] for path, entry in manifest.items()
+            if path in wanted and entry.get("content_id")}
+
+    remote = {item.get("content_id") for item in await tv.available(USER_CATEGORY)}
+    stale = sorted((ours & remote) - keep)
     if not stale:
         print("nothing to prune")
         return
-    print(f"deleting {len(stale)} items")
+
+    # A fetch that half failed leaves a short catalogue, and pruning against
+    # it would strip the wall. Refuse anything that drastic and say so.
+    share = len(stale) / max(1, len(ours))
+    if share > config.PRUNE_MAX_FRACTION:
+        print(f"refusing to prune {len(stale)} of {len(ours)} tracked items "
+              f"({share:.0%} > {config.PRUNE_MAX_FRACTION:.0%}). "
+              f"The catalogue looks incomplete; check the fetch log.")
+        return
+
+    print(f"deleting {len(stale)} items no longer in the catalogue")
     await tv.delete_list(stale)
+    for path, entry in list(manifest.items()):
+        if entry.get("content_id") in stale:
+            del manifest[path]
+    save_manifest(manifest)
 
 
 async def main():
@@ -283,11 +341,16 @@ async def main():
                         help="stop after this many uploads")
     parser.add_argument("--select", action="store_true",
                         help="display the first newly uploaded piece")
+    parser.add_argument("--slideshow", type=int, metavar="MINUTES",
+                        help="shuffle art mode through the uploaded library, "
+                             "changing every MINUTES; 0 turns rotation off")
     args = parser.parse_args()
 
     tv = await connect()
     try:
-        if args.check:
+        if args.slideshow is not None:
+            await cmd_slideshow(tv, args.slideshow)
+        elif args.check:
             await cmd_check(tv)
         elif args.fix_mattes:
             await cmd_fix_mattes(tv)

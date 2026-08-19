@@ -29,6 +29,7 @@ import hashlib
 import json
 import re
 import time
+from datetime import date
 from html import unescape
 from pathlib import Path
 
@@ -114,12 +115,15 @@ def _aic_run(must, limit):
                "limit": min(limit * 2, 100)}
     try:
         data = _post(AIC_SEARCH, payload).json()
-    except requests.HTTPError:
-        # Fallback for the GET-only bracketed parameter form.
-        terms = " ".join(str(clause).replace("'", "") for clause in must)
-        data = _get(AIC_SEARCH, params={"q": terms,
-                                        "fields": ",".join(AIC_FIELDS),
-                                        "limit": min(limit * 2, 100)}).json()
+    except requests.HTTPError as error:
+        # The old fallback stringified the query DSL into a free text q,
+        # which never fails and never matches anything on purpose: it just
+        # returns whatever AIC considers most relevant. That silently turned
+        # a broken structured query into a plausible looking list of famous
+        # paintings, which is far worse than an error, so it is gone.
+        print(f"  aic query failed ({error}); "
+              f"clauses were {[list(c) for c in must]}")
+        return []
 
     results = []
     for item in data.get("data", []):
@@ -160,9 +164,19 @@ def aic_by_artist(artist, limit):
 
 
 def aic_by_category(preset, limit):
+    """Also serves themes: they are the same shape, keyed on subject.
+
+    subject_titles is a real controlled vocabulary, so a seasonal theme can
+    be matched exactly rather than guessed at with free text. A Monet
+    haystack carries seasons, nature, farm, trees, hills, landscapes and
+    rural life, which is the vocabulary a theme actually wants.
+    """
     must = [{"term": {"is_public_domain": True}}]
+    subjects = preset.get("aic_subjects") or []
     styles = preset.get("aic_styles") or []
-    if styles:
+    if subjects:
+        must.append({"terms": {"subject_titles.keyword": subjects}})
+    elif styles:
         must.append({"terms": {"style_titles.keyword": styles}})
     else:
         must.append({"match": {"term_titles": " ".join(preset["terms"])}})
@@ -409,6 +423,13 @@ def main():
                         choices=list(ARTIST_SEARCHERS),
                         help="override config.ENABLED_SOURCES, repeatable")
     parser.add_argument("--list-categories", action="store_true")
+    parser.add_argument("--list-themes", action="store_true")
+    parser.add_argument("--month", type=int, choices=range(1, 13),
+                        help="overlay this month's theme rather than today's")
+    parser.add_argument("--no-theme", action="store_true",
+                        help="core roster only, no seasonal overlay")
+    parser.add_argument("--theme-only", action="store_true",
+                        help="seasonal overlay only, skip the core roster")
     parser.add_argument("--dry-run", action="store_true",
                         help="search and report, download nothing")
     args = parser.parse_args()
@@ -419,25 +440,46 @@ def main():
             print(f"{key:22} {preset['year_from']}-{preset['year_to']}  {hints}")
         return
 
+    if args.list_themes:
+        for month, preset in sorted(config.THEMES.items()):
+            subjects = ", ".join(preset.get("aic_subjects", [])[:4])
+            print(f"{month:2}  {preset['name']:24} {subjects}")
+        return
+
     artists = args.artist if args.artist is not None else config.ARTISTS
     categories = (args.category if args.category is not None
                   else config.CATEGORIES_ENABLED)
+    if args.theme_only:
+        artists, categories = [], []
+
+    # The overlay: the core roster stays all year, one theme rides on top.
+    months = []
+    if config.THEME_ENABLED and not args.no_theme:
+        months = [args.month or date.today().month]
+
     sources = args.source or config.ENABLED_SOURCES
-    if not artists and not categories:
-        raise SystemExit("Nothing selected. Set ARTISTS or CATEGORIES_ENABLED.")
+    if not artists and not categories and not months:
+        raise SystemExit("Nothing selected. Set ARTISTS, CATEGORIES_ENABLED "
+                         "or THEME_ENABLED.")
 
     raw_dir = Path(config.RAW_DIR)
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     catalogue = []
     seen_keys = set()
-    limit = config.MAX_PER_QUERY_PER_SOURCE
+    core_limit = config.MAX_PER_QUERY_PER_SOURCE
 
-    jobs = ([("artist", name, ARTIST_SEARCHERS, name) for name in artists] +
-            [("category", key, CATEGORY_SEARCHERS, config.CATEGORIES[key])
-             for key in categories])
+    # Themes run last so the core roster wins on dedupe: a work that is both
+    # a Monet and a snow scene stays labelled as core.
+    jobs = ([("artist", name, ARTIST_SEARCHERS, name, core_limit)
+             for name in artists] +
+            [("category", key, CATEGORY_SEARCHERS, config.CATEGORIES[key],
+              core_limit) for key in categories] +
+            [("theme", config.THEMES[m]["name"], CATEGORY_SEARCHERS,
+              config.THEMES[m], config.MAX_PER_THEME_PER_SOURCE)
+             for m in months])
 
-    for kind, label, searchers, argument in jobs:
+    for kind, label, searchers, argument, limit in jobs:
         for source in sources:
             print(f"[{source}] {kind}: {label}")
             try:

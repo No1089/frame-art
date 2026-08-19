@@ -4,13 +4,18 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-source .venv/bin/activate
+
+# No venv activation: call the interpreter directly so this behaves the same
+# under systemd, which has no shell profile.
+PY=./.venv/bin/python
 
 echo "== fetch =="
-python fetch_art.py
+# No arguments: the core roster plus whichever theme this month calls for.
+$PY -u fetch_art.py
 
 echo "== prepare =="
-python prepare_images.py
+$PY -u prepare_images.py
 
 echo "== push =="
-python push_to_frame.py
+# PRUNE_REMOTE is on, so this also retires last month's theme from the TV.
+$PY -u push_to_frame.py
