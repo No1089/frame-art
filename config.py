@@ -82,6 +82,12 @@ REQUIRE_PUBLIC_DOMAIN = True
 # Contact string sent in User-Agent. The Art Institute asks for this.
 HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; you@example.com)"
 
+# Retries and timeout for museum HTTP calls. Image servers time out under
+# load often enough to matter across a few hundred downloads, and a dropped
+# response means the work is silently missing from the catalogue.
+HTTP_RETRIES = 3
+HTTP_TIMEOUT_S = 60
+
 # Seconds between requests to any single API host.
 # The Art Institute asks for no more than one request per second.
 REQUEST_DELAY_S = 1.0

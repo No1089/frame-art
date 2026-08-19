@@ -13,6 +13,7 @@ Usage:
 import argparse
 import json
 import re
+import time
 from pathlib import Path
 
 from PIL import (Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont,
@@ -395,6 +396,27 @@ def save(image, path):
     return path.stat().st_size
 
 
+def write_json_with_retry(path, payload, attempts=5):
+    """Write the catalogue, retrying a transient EPERM.
+
+    macOS intermittently refuses the open with EPERM mid-batch, and losing
+    the catalogue write means every prepared_path computed in this run is
+    thrown away even though the JPEGs are on disk.
+    """
+    text = json.dumps(payload, indent=2, ensure_ascii=False)
+    for attempt in range(attempts):
+        try:
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(text)
+            tmp.replace(path)
+            return
+        except OSError as error:
+            if attempt == attempts - 1:
+                raise
+            print(f"  catalogue write failed ({error.strerror}), retrying")
+            time.sleep(1.5 * (attempt + 1))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--fit", choices=list(COMPOSERS), default=config.FIT_MODE)
@@ -422,10 +444,16 @@ def main():
             record["prepared_path"] = str(out_path)
             continue
 
-        try:
-            image = load_srgb(raw_path)
-        except OSError as error:
-            print(f"skip unreadable {raw_path.name}: {error}")
+        image = None
+        for attempt in range(3):
+            try:
+                image = load_srgb(raw_path)
+                break
+            except OSError as error:
+                last_error = error
+                time.sleep(0.75 * (attempt + 1))
+        if image is None:
+            print(f"skip unreadable {raw_path.name}: {last_error}")
             skipped += 1
             continue
 
@@ -448,7 +476,7 @@ def main():
         processed += 1
         print(f"{out_path.name}  {size_bytes // 1024} KB")
 
-    catalogue_path.write_text(json.dumps(catalogue, indent=2, ensure_ascii=False))
+    write_json_with_retry(catalogue_path, catalogue)
     print(f"\nprepared {processed}, skipped {skipped}, failed {failed}, "
           f"target {config.TARGET_WIDTH_PX}x{config.TARGET_HEIGHT_PX}, fit {args.fit}")
     if failed:

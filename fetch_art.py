@@ -44,10 +44,27 @@ _MET_DEPARTMENTS = None
 
 
 def _get(url, **kwargs):
-    time.sleep(config.REQUEST_DELAY_S)
-    response = SESSION.get(url, timeout=45, **kwargs)
-    response.raise_for_status()
-    return response
+    """GET with a retry, because one slow response should not drop a painting.
+
+    Museum image servers time out under load often enough to matter across a
+    few hundred downloads, and a dropped response here means the work is
+    silently absent from the catalogue.
+    """
+    last = None
+    for attempt in range(config.HTTP_RETRIES):
+        time.sleep(config.REQUEST_DELAY_S * (1 + attempt))
+        try:
+            response = SESSION.get(url, timeout=config.HTTP_TIMEOUT_S, **kwargs)
+            response.raise_for_status()
+            return response
+        except (requests.Timeout, requests.ConnectionError) as error:
+            last = error
+        except requests.HTTPError as error:
+            # 4xx will not improve on a retry; 5xx might.
+            if error.response is None or error.response.status_code < 500:
+                raise
+            last = error
+    raise last
 
 
 def _post(url, payload):
