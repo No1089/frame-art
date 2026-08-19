@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh the Frame TV art library weekly
+
+[Timer]
+OnCalendar=Sun 04:00
+Persistent=true
+RandomizedDelaySec=1800
+
+[Install]
+WantedBy=timers.target

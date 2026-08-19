@@ -1,0 +1,4 @@
+requests>=2.31
+pillow>=10.0
+# 2024 LS03D art mode support lives in this fork, not the PyPI samsungtvws
+samsungtvws @ git+https://github.com/NickWaterton/samsung-tv-ws-api.git

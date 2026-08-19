@@ -1,0 +1,13 @@
+[Unit]
+Description=Frame TV art pipeline
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=frameart
+WorkingDirectory=/opt/frame-art
+ExecStart=/opt/frame-art/run_pipeline.sh
+# The pipeline is idempotent. Already downloaded, prepared and uploaded
+# items are skipped via catalogue.json and uploaded.json.
+TimeoutStartSec=3600
