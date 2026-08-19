@@ -23,6 +23,7 @@ import asyncio
 import json
 from pathlib import Path
 
+from samsungtvws import SamsungTVWS
 from samsungtvws.async_art import SamsungTVAsyncArt
 
 import config
@@ -35,6 +36,9 @@ USER_CATEGORY = "MY-C0002"
 # does not arrive in time. Its ten second default is tight for a megabyte
 # over wifi, and a None return here is worse than a slow one.
 UPLOAD_TIMEOUT_S = 30
+
+# How long to leave the pairing prompt up waiting for someone to accept it.
+PAIRING_TIMEOUT_S = 90
 
 
 def load_manifest():
@@ -57,8 +61,58 @@ OFFLINE_HINT = (
     "and run this again."
 )
 
+# The TV emits this when nobody approves the connection in time. It means the
+# opposite of unreachable: the TV answered, it is simply waiting on a human.
+PAIRING_HINT = (
+    "The TV answered but the connection was never approved, so it timed out. "
+    "On the first connection The Frame shows an allow prompt naming the "
+    "client, here 'frame-art-pipeline'. Accept it with the remote while this "
+    "is running. The prompt only appears when the TV is showing its own UI, "
+    "so wake it out of art mode to the home screen first, and check "
+    "Settings > General > External Device Manager > Device Connect Manager "
+    "if it never appears or was previously denied."
+)
+
+
+def ensure_paired():
+    """Get a token before touching the art channel.
+
+    The art channel never raises the pairing prompt. Connecting to
+    com.samsung.art-app without a token sits for exactly thirty seconds and
+    then returns ms.channel.timeOut, with nothing shown on the TV, because
+    the prompt lives on the remote control channel instead. Worse, with no
+    token file the URL is built with a literal "token=None".
+
+    The fork means to handle this. SamsungTVAsyncArt.get_token() carries the
+    docstring "Open and close remote control websocket to get/check token",
+    but its body only constructs a SamsungTVWS and discards it without ever
+    opening a connection, so no token is obtained and no prompt appears.
+    Opening that channel ourselves is what actually pairs.
+    """
+    if Path(config.TV_TOKEN_FILE).exists():
+        return
+    print("No token yet. Opening the remote control channel to pair.")
+    print("Accept the allow prompt on the TV, client name frame-art-pipeline.")
+    remote = SamsungTVWS(host=config.TV_HOST, port=config.TV_PORT,
+                         token_file=config.TV_TOKEN_FILE,
+                         name="frame-art-pipeline", timeout=PAIRING_TIMEOUT_S)
+    try:
+        remote.open()
+    except Exception as error:
+        raise SystemExit(f"pairing failed: {type(error).__name__}: {error}\n"
+                         f"{PAIRING_HINT}")
+    finally:
+        try:
+            remote.close()
+        except Exception:
+            pass
+    if not Path(config.TV_TOKEN_FILE).exists():
+        raise SystemExit(f"pairing produced no token.\n{PAIRING_HINT}")
+    print(f"Paired. Token stored in {config.TV_TOKEN_FILE}.")
+
 
 async def connect():
+    ensure_paired()
     # Constructing SamsungTVAsyncArt already performs a REST call, so an
     # unreachable TV raises here rather than at start_listening. Both are
     # turned into one actionable line: a weekly timer firing at a switched
@@ -70,9 +124,10 @@ async def connect():
                                name="frame-art-pipeline")
         await tv.start_listening()
     except Exception as error:
+        hint = PAIRING_HINT if "timeOut" in str(error) else OFFLINE_HINT
         raise SystemExit(
-            f"cannot reach the TV at {config.TV_HOST}:{config.TV_PORT}: "
-            f"{type(error).__name__}: {error}\n{OFFLINE_HINT}")
+            f"could not open an art session on {config.TV_HOST}:{config.TV_PORT}: "
+            f"{type(error).__name__}: {error}\n{hint}")
     return tv
 
 
