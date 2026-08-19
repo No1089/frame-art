@@ -130,6 +130,20 @@ def aic_by_category(preset, limit):
 # ---------------------------------------------------------------------------
 # Metropolitan Museum of Art
 # ---------------------------------------------------------------------------
+# Two quirks of /search, both verified against the live API rather than
+# inferred from the docs:
+#
+#   1. It is parameter ORDER sensitive. Filters are only honoured when q comes
+#      first. "impressionism" in European Paintings 1860-1910 returns 12 hits
+#      with q leading and 241 with q trailing, i.e. with q last the department
+#      and date filters are silently ignored. So Met params are built as
+#      ordered lists of pairs with q at the front, never dict(base, q=...).
+#
+#   2. artistOrCulture=true is far lossier than it looks. Inside European
+#      Paintings it returns nothing at all for Renoir, Cassatt, Morisot and
+#      Caillebotte, where a plain q for the same names returns 38, 37, 29 and
+#      17. It is dropped here in favour of post-filtering on
+#      artistDisplayName, which _met_collect already does.
 
 MET_BASE = "https://collectionapi.metmuseum.org/public/collection/v1"
 
@@ -164,7 +178,10 @@ def _met_collect(params, limit, artist_filter=None):
             continue
         if not item.get("primaryImage"):
             continue
-        if not type_allowed(item.get("classification")):
+        # Met paintings often carry an empty classification but a usable
+        # objectName. Bierstadt's The Rocky Mountains is one such record, and
+        # classification alone would silently discard it.
+        if not type_allowed(item.get("classification") or item.get("objectName")):
             continue
         artist_name = item.get("artistDisplayName") or ""
         if artist_filter and artist_filter.lower() not in artist_name.lower():
@@ -182,30 +199,39 @@ def _met_collect(params, limit, artist_filter=None):
 
 
 def met_by_artist(artist, limit):
-    params = {"q": artist, "artistOrCulture": "true", "hasImages": "true"}
-    return _met_collect(params, limit, artist_filter=artist)
+    return _met_collect([("q", artist), ("hasImages", "true")], limit,
+                        artist_filter=artist)
 
 
 def met_by_category(preset, limit):
     department_ids = met_department_ids(preset.get("met_departments"))
-    base = {"hasImages": "true",
-            "dateBegin": preset["year_from"],
-            "dateEnd": preset["year_to"]}
-    if department_ids:
-        base["departmentId"] = department_ids[0]
+    window = [("hasImages", "true"),
+              ("dateBegin", preset["year_from"]),
+              ("dateEnd", preset["year_to"])]
+    # One query set per department. Only the first was used before, which
+    # quietly discarded the second for every preset that names two.
+    departments = [[("departmentId", d)] for d in department_ids] or [[]]
 
-    queries = [dict(base, q=" ".join(preset["terms"]))]
-    if config.CATEGORY_USE_ARTIST_HINTS:
-        for hint in preset.get("artist_hints", []):
-            queries.append(dict(base, q=hint, artistOrCulture="true"))
+    queries = []
+    for department in departments:
+        queries.append(([("q", " ".join(preset["terms"]))] + window + department,
+                        None))
+        if config.CATEGORY_USE_ARTIST_HINTS:
+            for hint in preset.get("artist_hints", []):
+                # The hint is also the post-filter. Without it a fuzzy match
+                # on a hint name pulls in whatever the search feels like,
+                # which is how an Egyptian Book of the Dead scores highly for
+                # "Albert Bierstadt".
+                queries.append(([("q", hint)] + window + department, hint))
 
     per_query = max(2, limit // max(1, len(queries)))
     results = []
-    for params in queries:
+    for params, artist_filter in queries:
         if len(results) >= limit:
             break
         try:
-            results.extend(_met_collect(params, per_query))
+            results.extend(_met_collect(params, per_query,
+                                        artist_filter=artist_filter))
         except requests.RequestException as error:
             print(f"  met query failed: {error}")
     return results[:limit]

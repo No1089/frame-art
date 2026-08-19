@@ -80,7 +80,7 @@ CATEGORIES = {
         "year_from": 1860,
         "year_to": 1910,
         "aic_styles": ["Impressionism"],
-        "met_departments": ["European Paintings", "Modern and Contemporary Art"],
+        "met_departments": ["European Paintings", "Modern Art"],
         "cma_departments": ["Modern European Painting and Sculpture"],
         "artist_hints": [
             "Claude Monet", "Camille Pissarro", "Alfred Sisley",
@@ -93,7 +93,7 @@ CATEGORIES = {
         "year_from": 1880,
         "year_to": 1920,
         "aic_styles": ["Post-Impressionism"],
-        "met_departments": ["European Paintings", "Modern and Contemporary Art"],
+        "met_departments": ["European Paintings", "Modern Art"],
         "cma_departments": ["Modern European Painting and Sculpture"],
         "artist_hints": [
             "Vincent van Gogh", "Paul Cezanne", "Paul Gauguin",
@@ -141,7 +141,7 @@ CATEGORIES = {
         "year_from": 1900,
         "year_to": 1960,
         "aic_styles": ["Modernism"],
-        "met_departments": ["Modern and Contemporary Art"],
+        "met_departments": ["Modern Art"],
         "cma_departments": ["Modern European Painting and Sculpture"],
         "artist_hints": [
             "Georgia O'Keeffe", "Wassily Kandinsky", "Paul Klee",
@@ -153,7 +153,10 @@ CATEGORIES = {
         "year_from": 1700,
         "year_to": 1950,
         "aic_styles": [],
-        "met_departments": ["European Paintings", "The American Wing"],
+        # "The American Wing" is not a resolvable department: /departments
+        # calls id 1 "American Decorative Arts", object records still say
+        # "The American Wing", and searching id 1 returns nothing.
+        "met_departments": ["European Paintings"],
         "cma_departments": ["European Painting and Sculpture"],
         "artist_hints": [
             "J. M. W. Turner", "Caspar David Friedrich", "John Constable",
