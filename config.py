@@ -21,21 +21,38 @@ http://<host>:8001/api/v2/ if you want to re-confirm.
 # deduplicated on artist plus title.
 
 # Free text artist names, matched against each museum's artist field.
+# The Impressionists themselves, which is a far tighter selector than any
+# style facet. AIC's "Impressionism" style also covers the American
+# Impressionists and sweeps in realists like Winslow Homer and Jules
+# Bastien-Lepage, so a category query cannot express "the Impressionists".
 ARTISTS = [
-    # "Hilma af Klint",
-    # "Vilhelm Hammershoi",
+    "Claude Monet",
+    "Pierre-Auguste Renoir",
+    "Edgar Degas",
+    "Camille Pissarro",
+    "Alfred Sisley",
+    "Berthe Morisot",
+    "Mary Cassatt",
+    "Gustave Caillebotte",
+    "Edouard Manet",
+    "Frederic Bazille",
+    "Armand Guillaumin",
+    "Eva Gonzales",
+    "Marie Bracquemond",
 ]
 
 # Keys from the CATEGORIES table further down.
-CATEGORIES_ENABLED = [
-    "impressionism",
-]
+# Empty on purpose. The artist roster above is the selector; adding the
+# impressionism preset back would re-admit the works it was chosen to avoid.
+CATEGORIES_ENABLED = []
 
 # Which sources to query, in priority order. Earlier sources win on dedupe.
 ENABLED_SOURCES = ["aic", "met", "cma"]
 
 # Max artworks to keep per artist or category, per source.
-MAX_PER_QUERY_PER_SOURCE = 25
+# Per artist, per source. Thirteen artists across three museums, so this
+# is breadth across the roster rather than depth on any one name.
+MAX_PER_QUERY_PER_SOURCE = 10
 
 # Restrict to these artwork types. Keeps coins, furniture and armour out.
 # Set to None to accept anything the source returns.
@@ -230,27 +247,29 @@ LABEL_ENABLED = True
 #   portrait and square  caption in a column beside the artwork
 #   landscape            artwork runs the full width, caption below it,
 #                        tucked under its right hand end
-# "side" and "bottom" force one layout for everything.
-LABEL_POSITION = "auto"
+# "side" and "bottom" force one layout for everything. "side" is the setting
+# in use: a caption below a landscape costs it vertical space it was using,
+# whereas beside it the artwork keeps the full panel height.
+LABEL_POSITION = "side"
 
 # Side layout. The artwork is fitted into the panel minus this column, then
 # anchored left, and the caption gets everything left over. A portrait is
 # limited by height, so it leaves a wide column with room for the blurb; a
 # wide landscape is limited by width and leaves exactly the minimum, which
 # holds the artist and title but not a paragraph.
-LABEL_MIN_COLUMN_PX = 400
+LABEL_MIN_COLUMN_PX = 330
 
 # Cap on the caption column. Without it a portrait leaves a column over
 # 1100px wide and the blurb sets in 150 character lines, which is unreadable
 # however nice the font is. Artwork and caption are centred as a pair, so the
 # leftover width stays as margin rather than as a hole on the right.
 LABEL_MAX_COLUMN_PX = 660
-LABEL_GAP_PX = 52
-LABEL_EDGE_MARGIN_PX = 56
+LABEL_GAP_PX = 38
+LABEL_EDGE_MARGIN_PX = 40
 
 # Only draw the blurb when the column is at least this wide. Below it the
 # text wraps to two or three words a line and looks like a ransom note.
-LABEL_BLURB_MIN_COLUMN_PX = 470
+LABEL_BLURB_MIN_COLUMN_PX = 430
 
 # Landscape layout. The caption sits below the artwork, its right edge
 # aligned with the artwork's, and the pair is centred vertically. A very wide
