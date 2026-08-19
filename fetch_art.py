@@ -184,8 +184,13 @@ def _met_collect(params, limit, artist_filter=None):
         if not type_allowed(item.get("classification") or item.get("objectName")):
             continue
         artist_name = item.get("artistDisplayName") or ""
-        if artist_filter and artist_filter.lower() not in artist_name.lower():
-            continue
+        # Match on surname, not the full string. The Met catalogues Renoir as
+        # "Auguste Renoir", so a "Pierre-Auguste Renoir" hint never matches
+        # him by full name, and the same goes for most compound given names.
+        if artist_filter:
+            surname = artist_filter.split()[-1].lower()
+            if surname not in artist_name.lower():
+                continue
         results.append({
             "source": "met",
             "source_id": str(object_id),
@@ -224,7 +229,12 @@ def met_by_category(preset, limit):
                 # "Albert Bierstadt".
                 queries.append(([("q", hint)] + window + department, hint))
 
-    per_query = max(2, limit // max(1, len(queries)))
+    # Once the filters actually apply, a Met query returns single digit hit
+    # counts, so the scan budget inside _met_collect is bounded by real hits
+    # rather than by this number. Keep it high enough that the one genuinely
+    # productive query, the style keyword against the department, is not
+    # capped at two.
+    per_query = max(6, limit // max(1, len(queries)))
     results = []
     for params, artist_filter in queries:
         if len(results) >= limit:
