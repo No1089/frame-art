@@ -209,6 +209,38 @@ Caddy on CT 102 reverse proxies to it by hostname through UniFi DNS, the same
 dynamic upstream pattern as Jellyfin and Immich, so the container keeps its
 DHCP lease and nothing hardcodes an IP.
 
+## Rotation
+
+**The TV rotates its own art; nothing here drives it on a timer.** That is a
+correctness requirement, not a preference. Rotating from outside means
+`select_image(..., show=True)`, and `show=True` forces art mode: with the
+Frame on HDMI it drops the signal, so the PS5 or Apple TV plugged into it
+loses its sink and sleeps. A five minute timer did that 24 times in two
+hours before it was removed. Do not reintroduce one.
+
+```bash
+python push_to_frame.py --slideshow 3    # the TV's own rotation, minutes
+python push_to_frame.py --slideshow 0    # off
+python push_to_frame.py --rotate         # change it now, on purpose
+```
+
+`SLIDESHOW_INTERVALS` is a measured constraint: the TV accepts **3, 15, 60
+or 1440 minutes, or off**, and rejects anything else with error `-7`, which
+is how an attempt at 30 failed. `set_auto_rotation_status`, the other API
+for the same thing, is not supported by this model at all.
+
+**Its read back lies.** `get_slideshow_status` reports `value=off` with an
+empty category immediately after a write the TV acknowledged with the
+correct values, exactly as `get_current` names an Art Store piece while
+something else is demonstrably on the wall. Verify by watching the wall for
+a few minutes, never by reading the API.
+
+For changing it deliberately there is a **send to the Frame** control on the
+web gallery, which posts to `/api/next` and shares its implementation with
+`--rotate` via `frame_control.py`. Forcing art mode is the intent there,
+because a person pressed it. Note that anything on the LAN can call that
+endpoint, the same exposure as the other services behind this Caddy.
+
 ## The other TV
 
 The second TV has no art mode, so it gets the library as a plain video file
@@ -227,6 +259,16 @@ twice.
 The prepared JPEGs are already 1920x1080 with the caption burned in, so the
 render is a straight concatenation with no rescaling, and it regenerates
 with the monthly timer.
+
+Its Apple TV also shows the collection as a **screensaver**, which is the
+better idle experience: `export_stills.py` publishes the same renders to
+`/mnt/media/Frame Art Stills`, reachable over the existing `[Media]` Samba
+share. Add them to a Shared Album from an iPad and point the Apple TV
+screensaver at it. The export **mirrors** rather than accumulates, so works
+dropped when the month turns over are deleted rather than piling up.
+
+If the screensaver's pan crops the side caption, export the web derivatives
+in `library/web` instead: full bleed artwork, no caption.
 
 ## Running on arrakis
 

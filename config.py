@@ -354,6 +354,17 @@ TV_TOKEN_FILE = "./tv-token.txt"    # created on first successful pairing
 MATTE = "none"
 PORTRAIT_MATTE = "none"
 
+# Intervals the TV will accept for its own slideshow, in minutes. This is a
+# fixed set, measured against the panel: anything else is rejected with error
+# -7, which is how an attempt at 30 failed. set_auto_rotation_status, the
+# other API for the same thing, is not supported by this model at all.
+#
+# Rotation is the TV's job rather than ours. Driving it from here meant
+# select_image with show=True every few minutes, and that forces art mode:
+# when the Frame was on HDMI it dropped the signal and slept the PS5 or the
+# Apple TV attached to it. The TV rotating internally cannot switch inputs.
+SLIDESHOW_INTERVALS = [3, 15, 60, 1440]
+
 # Delete previously uploaded items that are no longer in the local library.
 # On for the monthly rotation: without it last month's theme stays on the TV
 # for ever. Only content ids this pipeline recorded are ever deleted, so

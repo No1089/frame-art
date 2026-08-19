@@ -28,6 +28,7 @@ from samsungtvws import SamsungTVWS
 from samsungtvws.async_art import SamsungTVAsyncArt
 
 import config
+import frame_control
 
 # The TV's own category id for user uploaded pictures.
 # MY-C0004 is favourites, MY-C0008 is the store.
@@ -239,73 +240,64 @@ async def cmd_upload(tv, force_all=False, limit=None, select_first=False):
     print(f"\n{len(manifest)} items tracked in {config.UPLOAD_MANIFEST_FILE}")
 
 
-ROTATE_STATE_FILE = "./library/last-shown.txt"
-
-
 async def cmd_rotate(tv):
-    """Show a random work from the library, chosen by us rather than the TV.
+    """Show one work now. Shares its implementation with the web button.
 
-    The TV's own rotation is not usable here. set_slideshow_status only
-    accepts 3, 15, 60 or 1440 minutes, rejects anything else with error -7,
-    and on this firmware does not persist: it acknowledges the write and
-    then reads back 'off' with an empty category. set_auto_rotation_status
-    is not supported by this model at all. Meanwhile art mode falls back to
-    the Art Store category, so the wall shows stock landscapes.
-
-    Driving select_image from a timer sidesteps all of that and gives any
-    interval we like, at the cost of one websocket connection per change.
+    Do not put this back on a timer. It forces art mode, and unattended that
+    drops the HDMI signal and sleeps whatever is plugged into the Frame. The
+    TV's own slideshow handles unattended rotation; see cmd_slideshow.
     """
-    manifest = load_manifest()
-    choices = [entry["content_id"] for entry in manifest.values()
-               if entry.get("content_id")]
-    if not choices:
+    shown = await frame_control.show_next(tv)
+    if not shown:
         print("nothing in the manifest to show")
         return
-
-    # Avoid repeating the piece that is already up, which at five minute
-    # intervals a plain random choice would do noticeably often.
-    state = Path(ROTATE_STATE_FILE)
-    try:
-        last = state.read_text().strip()
-    except OSError:
-        last = ""
-    pool = [c for c in choices if c != last] or choices
-    pick = random.choice(pool)
-
-    await tv.select_image(pick, category=USER_CATEGORY, show=True)
-    try:
-        state.parent.mkdir(parents=True, exist_ok=True)
-        state.write_text(pick)
-    except OSError:
-        pass
-
-    entry = next((e for e in manifest.values()
-                  if e.get("content_id") == pick), {})
-    artist = (entry.get("artist") or "").split(" (")[0]
-    print(f"showing {pick}  {artist} - {entry.get('title')}")
+    print(f"showing {shown['content_id']}  {shown['artist']} - {shown['title']}")
 
 
 async def cmd_slideshow(tv, minutes):
-    """Point art mode at our uploads and let it shuffle them.
+    """Let the TV rotate its own art, over our uploads.
 
-    Without this the TV keeps showing whatever art mode was last set to,
-    which out of the box is the Art Store default category. Uploading and
-    even selecting an image does not change that: select_image sets the
-    current artwork, but entering art mode with the power button falls back
-    to the rotation setting, so the wall shows a stock landscape and none of
-    the library. Category 2 is MY-C0002, the user pictures.
+    Out of the box art mode shows the Art Store category, so the wall is
+    stock landscapes and none of the library. Uploading does not change
+    that, and neither does select_image: that sets the current artwork, but
+    entering art mode with the power button falls back to this setting.
+    Category 2 is MY-C0002, the user pictures.
+
+    This is the TV rotating internally, which is the whole point. Driving it
+    from outside means select_image with show=True, and that forces art
+    mode: with the Frame on HDMI it drops the signal and sleeps whatever is
+    plugged into it.
+
+    Note the read back cannot be trusted. This firmware acknowledges the
+    write with the right values and then reports value=off with an empty
+    category, the same way get_current insists on an Art Store piece while
+    something else is demonstrably on the wall. So this prints what was
+    sent and what came back, and claims nothing about which is true. Watch
+    the wall for a few minutes instead.
     """
+    if minutes and minutes not in config.SLIDESHOW_INTERVALS:
+        allowed = ", ".join(str(i) for i in config.SLIDESHOW_INTERVALS)
+        raise SystemExit(
+            f"the TV only accepts {allowed} minutes, or 0 for off; "
+            f"{minutes} is rejected with error -7")
+
     before = await tv.get_slideshow_status()
-    print(f"slideshow was: value={before.get('value')} "
+    print(f"was:  value={before.get('value')!r} "
           f"category={before.get('category_id')!r} type={before.get('type')!r}")
-    if minutes:
-        await tv.set_slideshow_status(duration=minutes, type=True, category=2)
-    else:
-        await tv.set_slideshow_status(duration=0, type=True, category=2)
+
+    await tv.set_slideshow_status(duration=minutes or 0, type=True, category=2)
+    print(f"sent: value={minutes or 'off'!r} category='MY-C0002' "
+          f"type='shuffleslideshow'  (acknowledged by the TV)")
+
     await asyncio.sleep(2)
     after = await tv.get_slideshow_status()
-    print(f"slideshow now: value={after.get('value')} "
+    print(f"read: value={after.get('value')!r} "
           f"category={after.get('category_id')!r} type={after.get('type')!r}")
+    if after.get("value") in (None, "", "off") and minutes:
+        print("\nThe read back says off. That is expected on this firmware and\n"
+              "does not mean the write failed. Put the TV in art mode and watch\n"
+              f"for {minutes * 2} minutes: if the piece changes on its own, it worked.")
+
 
 
 async def cmd_fix_mattes(tv):

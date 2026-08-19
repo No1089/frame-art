@@ -83,7 +83,14 @@ def main():
         # A silent track: some clients are unhappy with video-only files.
         "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
         "-map", "0:v", "-map", "1:a",
-        "-c:v", "libx264", "-profile:v", "high", "-pix_fmt", "yuv420p",
+        # JPEG is full range, TVs expect limited range. Without an explicit
+        # conversion ffmpeg tags the output yuvj420p and a player showing it
+        # as limited range lifts every black to grey, which would undo the
+        # point of a black gallery surround.
+        "-vf", "scale=in_range=full:out_range=tv,format=yuv420p",
+        "-color_range", "tv", "-colorspace", "bt709",
+        "-color_primaries", "bt709", "-color_trc", "bt709",
+        "-c:v", "libx264", "-profile:v", "high",
         "-tune", "stillimage", "-preset", "veryfast", "-crf", str(args.crf),
         # Two second keyframe interval so seeking is not miserable.
         "-r", "24", "-g", "48",

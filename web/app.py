@@ -10,6 +10,7 @@ Derivatives are generated on first request and cached, so the first pass over
 a new library is slow and every pass after it is not.
 """
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ from PIL import Image, ImageOps
 
 sys.path.insert(0, "/opt/frame-art")
 import config  # noqa: E402
+import frame_control  # noqa: E402
 
 ROOT = Path("/opt/frame-art")
 WEB_CACHE = ROOT / "library" / "web"
@@ -99,6 +101,40 @@ def img(work):
             im.thumbnail((WEB_MAX_PX, WEB_MAX_PX), Image.LANCZOS)
             im.save(cached, "JPEG", quality=WEB_QUALITY, optimize=True)
     return send_file(cached, mimetype="image/jpeg", max_age=86400)
+
+
+@app.route("/api/next", methods=["POST"])
+def api_next():
+    """Show the next piece on the Frame, on purpose.
+
+    This forces the TV into art mode, which is right for a deliberate press
+    and wrong for a timer: unattended it drops the HDMI signal and sleeps
+    whatever is plugged in. The TV's own slideshow does the unattended
+    rotation; this is the "change it now" button.
+
+    Anything on the LAN can call this. That is the same exposure as the
+    other services behind this Caddy, but it does mean the page can move
+    the TV.
+    """
+    async def run():
+        from push_to_frame import connect
+        tv = await connect()
+        try:
+            return await frame_control.show_next(tv)
+        finally:
+            await tv.close()
+
+    try:
+        shown = asyncio.run(run())
+    except SystemExit as error:
+        # connect() raises SystemExit with a readable line when the TV is off.
+        return jsonify({"ok": False, "error": str(error)}), 503
+    except Exception as error:
+        return jsonify({"ok": False,
+                        "error": f"{type(error).__name__}: {error}"}), 502
+    if not shown:
+        return jsonify({"ok": False, "error": "nothing uploaded yet"}), 409
+    return jsonify({"ok": True, **shown})
 
 
 @app.route("/healthz")

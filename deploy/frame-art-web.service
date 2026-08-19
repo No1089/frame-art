@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/frame-art/web
+WorkingDirectory=/opt/frame-art
 ExecStart=/opt/frame-art/.venv/bin/python /opt/frame-art/web/app.py
 Restart=on-failure
 RestartSec=5

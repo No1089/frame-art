@@ -35,12 +35,23 @@
   #count.hide { opacity:0; }
   #msg { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
     color:var(--dim); font-size:15px; }
+
+  /* Sends the piece to the Frame on the wall. Deliberate press only: the TV
+     does its own unattended rotation. */
+  #tv { position:fixed; top:max(12px,env(safe-area-inset-top)); left:max(16px,env(safe-area-inset-left));
+    font:inherit; font-size:13px; color:var(--faint); background:rgba(0,0,0,.35);
+    border:1px solid rgba(230,226,217,.18); border-radius:999px; padding:7px 15px;
+    cursor:pointer; transition:opacity .4s ease,color .2s ease; }
+  #tv:hover { color:var(--fg); }
+  #tv:disabled { opacity:.45; cursor:default; }
+  #tv.hide { opacity:0; }
 </style>
 </head>
 <body>
 <div id="stage"><img id="a" alt=""><img id="b" alt="" style="display:none"></div>
 <div id="bar"></div>
 <div id="count"></div>
+<button id="tv" type="button">send to the Frame</button>
 <div id="caption" class="hide">
   <div id="artist"></div>
   <div id="title"></div>
@@ -85,8 +96,11 @@ function show(i){
     back.style.display = 'none';
     setCaption(w);
     cap.classList.remove('hide'); countEl.classList.remove('hide');
+    tvBtn.classList.remove('hide');
     clearTimeout(window._capHide);
-    window._capHide = setTimeout(() => { cap.classList.add('hide'); countEl.classList.add('hide'); }, 8000);
+    window._capHide = setTimeout(() => {
+      cap.classList.add('hide'); countEl.classList.add('hide'); tvBtn.classList.add('hide');
+    }, 8000);
     preload(at+1);
   };
   back.onerror = () => next();
@@ -115,10 +129,28 @@ stage.addEventListener('touchend', e => {
   if (x0===null) return;
   const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
   if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? next() : prev(); }
-  else { cap.classList.toggle('hide'); countEl.classList.toggle('hide'); }
+  else { cap.classList.toggle('hide'); countEl.classList.toggle('hide'); tvBtn.classList.toggle('hide'); }
   x0 = y0 = null;
 }, {passive:true});
-stage.addEventListener('click', () => { cap.classList.toggle('hide'); countEl.classList.toggle('hide'); });
+stage.addEventListener('click', () => {
+  cap.classList.toggle('hide'); countEl.classList.toggle('hide'); tvBtn.classList.toggle('hide');
+});
+
+const tvBtn = document.getElementById('tv');
+tvBtn.addEventListener('click', async e => {
+  e.stopPropagation();
+  tvBtn.disabled = true;
+  const revert = t => setTimeout(() => { tvBtn.textContent = 'send to the Frame'; tvBtn.disabled = false; }, t);
+  tvBtn.textContent = 'sending…';
+  try {
+    const r = await fetch('/api/next', {method: 'POST'});
+    const d = await r.json();
+    tvBtn.textContent = d.ok ? `${d.artist} — on the wall` : (d.error || 'failed');
+  } catch (_) {
+    tvBtn.textContent = 'could not reach the Frame';
+  }
+  revert(4000);
+});
 
 fetch('/api/works').then(r => r.json()).then(data => {
   works = data;

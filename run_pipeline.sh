@@ -20,6 +20,14 @@ echo "== push =="
 # PRUNE_REMOTE is on, so this also retires last month's theme from the TV.
 $PY -u push_to_frame.py
 
+echo "== stills =="
+# For the second TV, whose Apple TV shows these as a screensaver.
+if [ -d /mnt/media ]; then
+    $PY -u export_stills.py
+else
+    echo "no /mnt/media, skipping the stills export"
+fi
+
 echo "== render =="
 # For the TV with no art mode: a plain H.264 file in Jellyfin, which every
 # client direct plays. Skipped if the media mount is not there.
