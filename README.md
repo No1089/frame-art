@@ -211,12 +211,26 @@ DHCP lease and nothing hardcodes an IP.
 
 ## Rotation
 
-**The TV rotates its own art; nothing here drives it on a timer.** That is a
-correctness requirement, not a preference. Rotating from outside means
-`select_image(..., show=True)`, and `show=True` forces art mode: with the
-Frame on HDMI it drops the signal, so the PS5 or Apple TV plugged into it
-loses its sink and sleeps. A five minute timer did that 24 times in two
-hours before it was removed. Do not reintroduce one.
+**Rotation is driven from here, but only while the TV is already showing
+art.** `select_image` forces art mode, and `show=True` fired blindly drops
+the HDMI signal, so the PS5 or Apple TV plugged into the Frame loses its
+sink and sleeps. An unguarded five minute timer did that 24 times in two
+hours.
+
+`--only-in-artmode` is what makes a timer safe, and it is load bearing:
+`get_artmode` reports `on` only while the TV is actually showing art and
+`off` while it is on an input, so the rotation is a no-op precisely when
+interrupting would be rude. When it does act the TV is already showing art,
+so there is nothing to switch away from. **Never run `--rotate` from a timer
+without it.**
+
+The TV's own slideshow would be preferable and cannot be set remotely on
+this firmware: every write is acknowledged and none persists, across
+category, an explicit `content_list`, both spellings of the rotation API,
+and `select_image` with `show=False`. It is a TV side setting, under Art
+Mode, Settings, Slideshow, where the source has to be My Collection rather
+than Store. The four intervals the API accepts, 3, 15, 60 and 1440 minutes,
+are exactly the four options in that menu.
 
 ```bash
 python push_to_frame.py --slideshow 3    # the TV's own rotation, minutes

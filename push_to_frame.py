@@ -240,13 +240,30 @@ async def cmd_upload(tv, force_all=False, limit=None, select_first=False):
     print(f"\n{len(manifest)} items tracked in {config.UPLOAD_MANIFEST_FILE}")
 
 
-async def cmd_rotate(tv):
+async def cmd_rotate(tv, only_in_artmode=False):
     """Show one work now. Shares its implementation with the web button.
 
-    Do not put this back on a timer. It forces art mode, and unattended that
-    drops the HDMI signal and sleeps whatever is plugged into the Frame. The
-    TV's own slideshow handles unattended rotation; see cmd_slideshow.
+    select_image forces art mode. Pressed by a person that is the intent;
+    fired blindly on a timer it drops the HDMI signal and sleeps whatever is
+    plugged into the Frame, which is what an unguarded five minute timer did
+    24 times in two hours.
+
+    only_in_artmode is what makes a timer safe. get_artmode reports "on"
+    only when the TV is actually showing art and "off" while it is on an
+    input, so with the guard the rotation is a no-op precisely when
+    interrupting would be rude. The TV is already showing art when we act,
+    so there is nothing to switch away from.
     """
+    if only_in_artmode:
+        try:
+            mode = await tv.get_artmode()
+        except Exception as error:
+            print(f"cannot read art mode ({type(error).__name__}), leaving the TV alone")
+            return
+        if mode != "on":
+            print(f"art mode is {mode!r}, leaving the TV alone")
+            return
+
     shown = await frame_control.show_next(tv)
     if not shown:
         print("nothing in the manifest to show")
@@ -381,8 +398,10 @@ async def main():
     parser.add_argument("--select", action="store_true",
                         help="display the first newly uploaded piece")
     parser.add_argument("--rotate", action="store_true",
-                        help="show one random work; drive this from a timer "
-                             "instead of the TV's own broken slideshow")
+                        help="show one random work now")
+    parser.add_argument("--only-in-artmode", action="store_true",
+                        help="with --rotate, do nothing unless the TV is "
+                             "already showing art; makes a timer safe")
     parser.add_argument("--quiet-if-offline", action="store_true",
                         help="exit 0 when the TV is unreachable, for timers")
     parser.add_argument("--slideshow", type=int, metavar="MINUTES",
@@ -399,7 +418,7 @@ async def main():
         raise
     try:
         if args.rotate:
-            await cmd_rotate(tv)
+            await cmd_rotate(tv, only_in_artmode=args.only_in_artmode)
         elif args.slideshow is not None:
             await cmd_slideshow(tv, args.slideshow)
         elif args.check:

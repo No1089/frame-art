@@ -1,0 +1,10 @@
+[Unit]
+Description=Show the next piece on the Frame TV
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/frame-art
+# --only-in-artmode is load bearing. Without it this forces art mode and
+# drops the HDMI signal, sleeping whatever is plugged into the TV.
+ExecStart=/opt/frame-art/.venv/bin/python push_to_frame.py --rotate --only-in-artmode --quiet-if-offline

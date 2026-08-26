@@ -1,0 +1,12 @@
+[Unit]
+Description=Rotate the piece shown on the Frame TV
+
+[Timer]
+# Three minutes, matching the shortest interval the TV's own slideshow
+# offers. Safe at this rate only because the service checks art mode first
+# and does nothing while the TV is on an input.
+OnCalendar=*:0/3
+Persistent=false
+
+[Install]
+WantedBy=timers.target
