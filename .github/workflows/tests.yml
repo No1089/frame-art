@@ -1,0 +1,41 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # The label renderer needs a serif face. config.py falls back through
+      # macOS, then DejaVu, then Liberation, then Pillow's built-in, so this
+      # is what makes the runner exercise the same path a Linux box does
+      # rather than the bitmap fallback.
+      - name: Install fonts
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-dejavu-core
+
+      - name: Install
+        # Deliberately the pinned requirements, so CI notices if the pinned
+        # fork stops installing rather than only finding out on a new host.
+        run: |
+          python -m pip install --quiet --upgrade pip
+          pip install --quiet -r requirements.txt pytest
+
+      - name: Run tests
+        # Nothing here reaches a museum API or the TV, so there is no network
+        # dependency and no secret to configure.
+        run: python -m pytest tests -q

@@ -84,10 +84,23 @@ Unit files are in `deploy/`.
 ## Status
 
 Built for one TV in one house and used daily, not packaged as a product.
-There are no tests and no CI: the museum APIs and the TV are the things most
-likely to break, and neither can be meaningfully mocked without asserting the
-very behaviour that turned out to be wrong. What is documented below was
-measured against the real thing.
+
+There are tests, and they are deliberately narrow: they cover this code's own
+logic and nothing else. The museum APIs and the TV are not mocked, because
+mocking them would mean asserting the behaviour this code originally assumed,
+which is exactly what turned out to be wrong. A Met mock would have encoded
+"filters apply regardless of parameter order" and passed for ever while the
+real endpoint silently did the opposite.
+
+So the suite pins down the things that failed *quietly*: query construction,
+image URL shape, layout geometry, text truncation and rotation state. The
+external behaviour stays documented below, where a human can re-check it
+against the real thing.
+
+```bash
+pip install -r requirements.txt pytest
+python -m pytest tests -q
+```
 
 Everything below is the detail: what each museum does wrong, how the labels
 are laid out, how the TV has to be handled, and what was measured rather

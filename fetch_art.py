@@ -108,6 +108,31 @@ AIC_FIELDS = ["id", "title", "artist_title", "date_display", "image_id",
 AIC_SEARCH = "https://api.artic.edu/api/v1/artworks/search"
 
 
+def aic_image_url(image_id):
+    """IIIF URL for an AIC image.
+
+    Note the "full/" region segment before the size. AIC returns 403 for
+    both full/full and full/max, so an explicit size is mandatory, and
+    dropping the region while adding one turns every download into a 403.
+    """
+    return (f"https://www.artic.edu/iiif/2/{image_id}"
+            f"/full/{config.AIC_IMAGE_SIZE}/0/default.jpg")
+
+
+def aic_must(preset):
+    """The Elasticsearch must clauses for a category or theme preset."""
+    must = [{"term": {"is_public_domain": True}}]
+    subjects = preset.get("aic_subjects") or []
+    styles = preset.get("aic_styles") or []
+    if subjects:
+        must.append({"terms": {"subject_titles.keyword": subjects}})
+    elif styles:
+        must.append({"terms": {"style_titles.keyword": styles}})
+    else:
+        must.append({"match": {"term_titles": " ".join(preset["terms"])}})
+    return must
+
+
 def _aic_run(must, limit):
     """AIC search is Elasticsearch backed and accepts a query DSL body."""
     payload = {"query": {"bool": {"must": must}},
@@ -149,10 +174,7 @@ def _aic_run(must, limit):
                                 or item.get("description")),
             "medium": item.get("medium_display") or "",
             "credit": item.get("credit_line") or "",
-            # Not full/full: AIC returns 403 for both that and full/max.
-            # See config.AIC_IMAGE_SIZE.
-            "image_url": (f"https://www.artic.edu/iiif/2/{item['image_id']}"
-                          f"/full/{config.AIC_IMAGE_SIZE}/0/default.jpg"),
+            "image_url": aic_image_url(item["image_id"]),
         })
     return results
 
@@ -171,16 +193,7 @@ def aic_by_category(preset, limit):
     haystack carries seasons, nature, farm, trees, hills, landscapes and
     rural life, which is the vocabulary a theme actually wants.
     """
-    must = [{"term": {"is_public_domain": True}}]
-    subjects = preset.get("aic_subjects") or []
-    styles = preset.get("aic_styles") or []
-    if subjects:
-        must.append({"terms": {"subject_titles.keyword": subjects}})
-    elif styles:
-        must.append({"terms": {"style_titles.keyword": styles}})
-    else:
-        must.append({"match": {"term_titles": " ".join(preset["terms"])}})
-    return _aic_run(must, limit)
+    return _aic_run(aic_must(preset), limit)
 
 
 # ---------------------------------------------------------------------------
@@ -269,8 +282,14 @@ def met_by_artist(artist, limit):
                         artist_filter=artist)
 
 
-def met_by_category(preset, limit):
-    department_ids = met_department_ids(preset.get("met_departments"))
+def met_queries(preset, department_ids):
+    """Build the Met queries for a preset. Pure, so it can be tested.
+
+    Every params list must start with q. The endpoint only honours the other
+    filters when it does, and gets this wrong silently rather than loudly:
+    with q trailing, the department and date window are ignored and a
+    plausible looking result set comes back anyway.
+    """
     window = [("hasImages", "true"),
               ("dateBegin", preset["year_from"]),
               ("dateEnd", preset["year_to"])]
@@ -289,6 +308,12 @@ def met_by_category(preset, limit):
                 # which is how an Egyptian Book of the Dead scores highly for
                 # "Albert Bierstadt".
                 queries.append(([("q", hint)] + window + department, hint))
+    return queries
+
+
+def met_by_category(preset, limit):
+    department_ids = met_department_ids(preset.get("met_departments"))
+    queries = met_queries(preset, department_ids)
 
     # Once the filters actually apply, a Met query returns single digit hit
     # counts, so the scan budget inside _met_collect is bounded by real hits
@@ -315,16 +340,24 @@ def met_by_category(preset, limit):
 CMA_URL = "https://openaccess-api.clevelandart.org/api/artworks/"
 
 
+def cma_best_image(images):
+    """Pick a derivative, deliberately never "full".
+
+    Cleveland calls its preservation master "full" and it is a TIFF that can
+    exceed 480 MB for a single painting, which is a preposterous thing to
+    fetch for a 1920x1080 panel. See config.CMA_IMAGE_PREFERENCE.
+    """
+    return next((images[key] for key in config.CMA_IMAGE_PREFERENCE
+                 if (images.get(key) or {}).get("url")), None)
+
+
 def _cma_collect(params, limit):
     data = _get(CMA_URL, params=params).json()
     results = []
     for item in data.get("data", []):
         if len(results) >= limit:
             break
-        images = item.get("images") or {}
-        # Deliberately not "full": see config.CMA_IMAGE_PREFERENCE.
-        best = next((images[key] for key in config.CMA_IMAGE_PREFERENCE
-                     if (images.get(key) or {}).get("url")), None)
+        best = cma_best_image(item.get("images") or {})
         if not best:
             continue
         if not type_allowed(item.get("type")):
