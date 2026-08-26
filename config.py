@@ -365,6 +365,12 @@ PORTRAIT_MATTE = "none"
 # Apple TV attached to it. The TV rotating internally cannot switch inputs.
 SLIDESHOW_INTERVALS = [3, 15, 60, 1440]
 
+# How often the picture actually changes, in minutes. Separate from how often
+# the timer looks: the check is cheap and wants to be frequent so that
+# entering art mode swaps off the Art Store piece within a minute, while the
+# picture itself should not change every minute.
+ROTATE_MIN_INTERVAL_MIN = 3
+
 # Delete previously uploaded items that are no longer in the local library.
 # On for the monthly rotation: without it last month's theme stays on the TV
 # for ever. Only content ids this pipeline recorded are ever deleted, so

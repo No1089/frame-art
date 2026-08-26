@@ -7,4 +7,8 @@ Type=oneshot
 WorkingDirectory=/opt/frame-art
 # --only-in-artmode is load bearing. Without it this forces art mode and
 # drops the HDMI signal, sleeping whatever is plugged into the TV.
-ExecStart=/opt/frame-art/.venv/bin/python push_to_frame.py --rotate --only-in-artmode --quiet-if-offline
+# The check runs every minute so that entering art mode swaps off the Art
+# Store piece promptly; --min-interval keeps the picture itself on a
+# sensible cadence.
+ExecStart=/opt/frame-art/.venv/bin/python push_to_frame.py --rotate \
+    --only-in-artmode --min-interval 3 --quiet-if-offline

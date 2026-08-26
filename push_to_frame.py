@@ -240,19 +240,22 @@ async def cmd_upload(tv, force_all=False, limit=None, select_first=False):
     print(f"\n{len(manifest)} items tracked in {config.UPLOAD_MANIFEST_FILE}")
 
 
-async def cmd_rotate(tv, only_in_artmode=False):
-    """Show one work now. Shares its implementation with the web button.
+async def cmd_rotate(tv, only_in_artmode=False, min_interval=None):
+    """Show one work. Guarded, because select_image forces art mode.
 
-    select_image forces art mode. Pressed by a person that is the intent;
-    fired blindly on a timer it drops the HDMI signal and sleeps whatever is
-    plugged into the Frame, which is what an unguarded five minute timer did
-    24 times in two hours.
+    Pressed by a person that is the intent. Fired blindly on a timer it
+    drops the HDMI signal and sleeps whatever is plugged into the Frame,
+    which is what an unguarded timer did 24 times in two hours.
 
     only_in_artmode is what makes a timer safe. get_artmode reports "on"
-    only when the TV is actually showing art and "off" while it is on an
-    input, so with the guard the rotation is a no-op precisely when
-    interrupting would be rude. The TV is already showing art when we act,
-    so there is nothing to switch away from.
+    only while the TV is actually showing art and "off" while it is on an
+    input, so the rotation becomes a no-op precisely when interrupting would
+    be rude, and when it does act the TV is already showing art.
+
+    min_interval separates how often we look from how often the picture
+    changes. Looking every minute means entering art mode replaces the Art
+    Store piece almost at once; the interval stops that turning into a
+    picture change every minute.
     """
     if only_in_artmode:
         try:
@@ -260,9 +263,16 @@ async def cmd_rotate(tv, only_in_artmode=False):
         except Exception as error:
             print(f"cannot read art mode ({type(error).__name__}), leaving the TV alone")
             return
+        just_entered = frame_control.entering_artmode(mode == "on")
         if mode != "on":
             print(f"art mode is {mode!r}, leaving the TV alone")
             return
+        if min_interval is not None and not just_entered \
+                and not frame_control.due(min_interval):
+            print(f"shown less than {min_interval} min ago, leaving it up")
+            return
+        if just_entered:
+            print("art mode just came on")
 
     shown = await frame_control.show_next(tv)
     if not shown:
@@ -402,6 +412,10 @@ async def main():
     parser.add_argument("--only-in-artmode", action="store_true",
                         help="with --rotate, do nothing unless the TV is "
                              "already showing art; makes a timer safe")
+    parser.add_argument("--min-interval", type=int, metavar="MINUTES",
+                        default=None,
+                        help="with --rotate, leave the current piece up if it "
+                             "went up less than this many minutes ago")
     parser.add_argument("--quiet-if-offline", action="store_true",
                         help="exit 0 when the TV is unreachable, for timers")
     parser.add_argument("--slideshow", type=int, metavar="MINUTES",
@@ -418,7 +432,8 @@ async def main():
         raise
     try:
         if args.rotate:
-            await cmd_rotate(tv, only_in_artmode=args.only_in_artmode)
+            await cmd_rotate(tv, only_in_artmode=args.only_in_artmode,
+                             min_interval=args.min_interval)
         elif args.slideshow is not None:
             await cmd_slideshow(tv, args.slideshow)
         elif args.check:
