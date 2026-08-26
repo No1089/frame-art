@@ -80,6 +80,8 @@ CMA_IMAGE_PREFERENCE = ["print", "web"]
 REQUIRE_PUBLIC_DOMAIN = True
 
 # Contact string sent in User-Agent. The Art Institute asks for this.
+# The Art Institute asks for a contact here so they can reach whoever is
+# hitting their API. Put a real one in config_local.py; do not commit it.
 HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; you@example.com)"
 
 # Retries and timeout for museum HTTP calls. Image servers time out under
@@ -366,7 +368,11 @@ MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 # THE FRAME
 # ---------------------------------------------------------------------------
 
-TV_HOST = "192.0.2.10"          # give this a DHCP reservation in UniFi
+# 192.0.2.0/24 is TEST-NET-1, reserved for documentation, so this default
+# cannot reach anything by accident. Set the real address in
+# config_local.py, and give the TV a DHCP reservation: the pairing token
+# is bound to the connection and a changed address means pairing again.
+TV_HOST = "192.0.2.10"
 TV_PORT = 8002                      # 8002 is the TLS websocket endpoint
 TV_TOKEN_FILE = "./tv-token.txt"    # created on first successful pairing
 
@@ -576,3 +582,26 @@ THEMES = {
                          "Vincent van Gogh", "Vilhelm Hammershoi"],
     },
 }
+
+
+# ---------------------------------------------------------------------------
+# LOCAL OVERRIDES
+# ---------------------------------------------------------------------------
+# Anything host specific belongs in config_local.py, which is not committed:
+# the TV's address and a real contact for the User-Agent. This file is
+# meant to be publishable and should stay that way.
+#
+#     # config_local.py
+#     TV_HOST = "10.0.0.5"
+#     HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; me@example.com)"
+
+try:
+    from config_local import *  # noqa: F401,F403
+except ModuleNotFoundError as _missing:
+    # No local file at all is fine: the values above are placeholders and
+    # TV_HOST points into TEST-NET, so nothing can be reached by accident.
+    # A local file that exists but fails to import is not fine and must not
+    # be swallowed, or the failure resurfaces much later as an unreachable
+    # TV, which is a miserable thing to debug.
+    if _missing.name != "config_local":
+        raise

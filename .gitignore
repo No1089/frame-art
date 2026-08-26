@@ -4,3 +4,4 @@ library/
 tv-token.txt
 ._*
 .DS_Store
+config_local.py

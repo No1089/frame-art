@@ -70,7 +70,10 @@ No artwork is committed to this repository beyond the two examples above.
 
 ```bash
 python -m venv .venv && ./.venv/bin/pip install -r requirements.txt
-# edit config.py: TV_HOST, HTTP_USER_AGENT, and what to collect
+# put your TV's address and a real contact in config_local.py, untracked:
+#   TV_HOST = "10.0.0.5"
+#   HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; me@example.com)"
+# then choose what to collect in config.py
 ./.venv/bin/python fetch_art.py --dry-run     # look before downloading
 ./.venv/bin/python push_to_frame.py --check   # pair, and probe the TV
 ```
@@ -282,7 +285,7 @@ half failed fetch cannot strip the wall.
 
 ## Web gallery
 
-The same library is browsable at **https://example.com**, which is what
+The same library is browsable at **https://art.example.com**, which is what
 the iPads use. A Flask app on CT 108 serves the catalogue as JSON and a
 2048px derivative of each work, cached on first request.
 
@@ -388,7 +391,7 @@ Network calls to the museums start timing out too. The retries in
 apt install -y python3-venv python3-dev libjpeg-dev zlib1g-dev git
 ```
 
-The container needs a route to the TV on the the TV subnet subnet and outbound
+The container needs a route to the TV's subnet and outbound
 HTTPS to the museum APIs. No inbound ports.
 
 `run_pipeline.sh` chains all three stages and exits non-zero on the first
