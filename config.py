@@ -325,6 +325,27 @@ LABEL_FONT_ITALIC_CANDIDATES = [
 # these to every creator string.
 LABEL_STRIP_ARTIST_PARENTHETICAL = True
 
+# The lending institution, named on the label. This is partly good manners,
+# since a gallery label names the museum, and partly a licensing obligation.
+#
+# The paintings are public domain, but the curatorial text is separately
+# authored and separately licensed. The Art Institute's API says so itself:
+# "The description field in this response is licensed under a Creative
+# Commons Attribution 4.0 Generic License (CC-By) ... All other data in this
+# response is licensed under a Creative Commons Zero (CC0) 1.0 designation."
+# Blurbs come from short_description falling back to description, so an AIC
+# blurb can be CC-BY and carries an attribution requirement. Naming the
+# museum on every label satisfies it without having to work out, per work,
+# which field the text came from.
+#
+# Cleveland reports share_license_status CC0 and the Met's open access data
+# is CC0, so neither compels this, but consistency reads better anyway.
+MUSEUM_NAMES = {
+    "aic": "Art Institute of Chicago",
+    "met": "The Metropolitan Museum of Art",
+    "cma": "Cleveland Museum of Art",
+}
+
 # ---------------------------------------------------------------------------
 # OUTPUT ENCODING
 # ---------------------------------------------------------------------------

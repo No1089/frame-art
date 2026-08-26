@@ -268,6 +268,11 @@ def build_label(record, width, available_height, allow_blurb=True):
         for line in wrap_text(tombstone, fonts["tomb"], width):
             rows.append((line, fonts["tomb"], config.LABEL_TOMBSTONE_COLOUR))
 
+    museum = config.MUSEUM_NAMES.get(record.get("source"))
+    if museum:
+        for line in wrap_text(museum, fonts["tomb"], width):
+            rows.append((line, fonts["tomb"], config.LABEL_TOMBSTONE_COLOUR))
+
     blurb = (record.get("blurb") or "").strip()
     if allow_blurb and blurb:
         spare = (available_height - measure_rows(rows)

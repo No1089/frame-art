@@ -75,7 +75,9 @@ function setCaption(w){
   document.getElementById('artist').textContent = w.artist || '';
   document.getElementById('title').textContent = w.date ? `${w.title}, ${w.date}` : w.title;
   const tomb = [w.medium, w.credit].filter(Boolean).join(', ');
-  document.getElementById('tomb').textContent = tomb ? tomb.charAt(0).toUpperCase()+tomb.slice(1) : '';
+  const line = tomb ? tomb.charAt(0).toUpperCase()+tomb.slice(1) : '';
+  // The museum is an attribution, not decoration: AIC curatorial text is CC-BY.
+  document.getElementById('tomb').textContent = [line, w.museum].filter(Boolean).join(' · ');
   document.getElementById('blurb').textContent = w.blurb || '';
   countEl.textContent = `${at+1} / ${order.length}`;
 }

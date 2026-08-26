@@ -77,6 +77,10 @@ def api_works():
             "credit": record.get("credit") or "",
             "blurb": record.get("blurb") or "",
             "source": record.get("source"),
+            # Named for the same reason the burned in label names it: AIC's
+            # description field is CC-BY and carries an attribution
+            # requirement even though the painting itself is public domain.
+            "museum": config.MUSEUM_NAMES.get(record.get("source"), ""),
             "selected_by": record.get("selected_by", ""),
         })
     return jsonify(out)

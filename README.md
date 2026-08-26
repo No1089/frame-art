@@ -1,4 +1,90 @@
-# Frame TV art pipeline: handoff brief
+# frame-art
+
+Fills a Samsung The Frame with public-domain museum paintings, each rendered
+like a gallery wall with the artist, title, medium and curator's note beside
+it. Runs unattended: it fetches, renders, uploads, rotates what's on the
+wall, and swaps in a seasonal theme when the month turns.
+
+![A portrait work, caption in the column beside it](docs/example-portrait.jpg)
+
+![A landscape work, running the full width](docs/example-landscape.jpg)
+
+*Mary Cassatt, The Child's Bath (1893) and Claude Monet, Cliff Walk at
+Pourville (1882), both public domain, Art Institute of Chicago.*
+
+## Why it exists
+
+The Frame ships with an Art Store subscription. Everything it shows you
+otherwise is a photo with a mount drawn round it. But the world's museums
+have put hundreds of thousands of public-domain paintings online, in full
+resolution, free, and a TV that hangs on a wall pretending to be a picture
+ought to be showing those.
+
+Three problems stand between the two, and this is the code for all three:
+
+**Museums do not agree on anything.** The Art Institute has a real style
+facet you can query exactly. The Met has none, spells its department names
+differently from its own object records, and only honours search filters
+when `q` is the first parameter. Cleveland calls its preservation TIFF
+"full", and it can be 483 MB.
+
+**A 16:9 panel and a portrait canvas cannot both win.** So the artwork is
+fitted rather than cropped, on black, with the caption in whatever space is
+left over: a column beside a portrait, underneath the right hand end of a
+landscape.
+
+**The TV is not very helpful.** It shows no metadata at all for an image you
+upload, so the caption has to be part of the picture. Its art API
+acknowledges writes that never take effect and reports state that is simply
+wrong. Its slideshow settings need a Samsung account, so on a TV kept off
+the internet they cannot be set at all.
+
+## What it does
+
+```
+fetch_art.py       museum APIs   ->  library/raw/       + catalogue.json
+prepare_images.py  library/raw   ->  library/prepared/  1920x1080, captioned
+push_to_frame.py   prepared      ->  the TV, matte disabled
+export_stills.py   prepared      ->  a share, for an Apple TV screensaver
+make_slideshow.py  prepared      ->  an H.264 file, for a TV with no art mode
+web/               catalogue     ->  a browsable gallery
+```
+
+Sources are the Art Institute of Chicago, the Metropolitan Museum of Art and
+the Cleveland Museum of Art. All three are keyless, and only public domain
+or CC0 works are ever downloaded.
+
+## Licensing
+
+The paintings are public domain. **The words are not necessarily.** The Art
+Institute's API states that its `description` field is CC-BY while the rest
+of its data is CC0, and blurbs come from `short_description` falling back to
+`description`, so a caption can carry a CC-BY obligation even when the
+painting it describes is centuries out of copyright. Every label names the
+lending museum, which satisfies that and reads better anyway. Cleveland
+reports CC0, and the Met's open access data is CC0.
+
+No artwork is committed to this repository beyond the two examples above.
+
+## Running it
+
+```bash
+python -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+# edit config.py: TV_HOST, HTTP_USER_AGENT, and what to collect
+./.venv/bin/python fetch_art.py --dry-run     # look before downloading
+./.venv/bin/python push_to_frame.py --check   # pair, and probe the TV
+```
+
+`run_pipeline.sh` chains every stage and is what the monthly timer runs.
+Unit files are in `deploy/`.
+
+Everything below is the detail: what each museum does wrong, how the labels
+are laid out, how the TV has to be handled, and what was measured rather
+than assumed.
+
+---
+
+# The detail
 
 Target: Samsung The Frame, 32 inch. Goal is a local library of public
 domain museum artwork, correctly sized, pushed over the network with the
