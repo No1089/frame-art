@@ -81,6 +81,14 @@ python -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 `run_pipeline.sh` chains every stage and is what the monthly timer runs.
 Unit files are in `deploy/`.
 
+## Status
+
+Built for one TV in one house and used daily, not packaged as a product.
+There are no tests and no CI: the museum APIs and the TV are the things most
+likely to break, and neither can be meaningfully mocked without asserting the
+very behaviour that turned out to be wrong. What is documented below was
+measured against the real thing.
+
 Everything below is the detail: what each museum does wrong, how the labels
 are laid out, how the TV has to be handled, and what was measured rather
 than assumed.
@@ -286,23 +294,22 @@ half failed fetch cannot strip the wall.
 ## Web gallery
 
 The same library is browsable at **https://art.example.com**, which is what
-the iPads use. A Flask app on CT 108 serves the catalogue as JSON and a
-2048px derivative of each work, cached on first request.
+the iPads use. A small Flask app serves the catalogue as JSON and a 2048px derivative
+of each work, cached on first request.
 
 It deliberately serves the **raw artwork, not the TV renders**: those are
 1920x1080 with black bars and a caption burned in at a size chosen for a 32
 inch panel seen from across a room. A browser can lay the caption out itself
 and let the artwork fill whatever shape the screen happens to be.
 
-Caddy on CT 102 reverse proxies to it by hostname through UniFi DNS, the same
-dynamic upstream pattern as Jellyfin and Immich, so the container keeps its
-DHCP lease and nothing hardcodes an IP.
+A reverse proxy in front of it resolves the container by hostname rather
+than address, so it can keep a DHCP lease and nothing hardcodes an IP.
 
 ## Rotation
 
 **Rotation is driven from here, but only while the TV is already showing
 art.** `select_image` forces art mode, and `show=True` fired blindly drops
-the HDMI signal, so the PS5 or Apple TV plugged into the Frame loses its
+the HDMI signal, so whatever is plugged into the Frame loses its
 sink and sleeps. An unguarded five minute timer did that 24 times in two
 hours.
 
@@ -348,40 +355,39 @@ endpoint, the same exposure as the other services behind this Caddy.
 
 The second TV has no art mode, so it gets the library as a plain video file
 instead: `make_slideshow.py` concatenates the prepared JPEGs into an H.264
-MP4 at `/mnt/media/Gallery`, which Jellyfin serves as its own Gallery
-library and Swiftfin or Infuse play like anything else.
+MP4 at `/mnt/media/Gallery`, which a media server can serve as its own
+library and any client will play.
 
 **A file, not a live stream, and H.264 on purpose.** A live HLS or RTSP feed
 would need an encoder running continuously; a pre-rendered file needs none.
 More to the point, encoding to H.264 High in yuv420p with a silent AAC track
-is what an Apple TV direct plays, so Jellyfin never transcodes it. That
-matters on this host, which has a history of hard locking on hardware
-accelerated video decode: the safest video is video nothing has to decode
-twice.
+is what an Apple TV direct plays, so the media server never transcodes it.
+That mattered on the host this was built for, which had a history of hard
+locking on hardware accelerated video decode: the safest video is video
+nothing has to decode twice.
 
 The prepared JPEGs are already 1920x1080 with the caption burned in, so the
 render is a straight concatenation with no rescaling, and it regenerates
 with the monthly timer.
 
 Its Apple TV also shows the collection as a **screensaver**, which is the
-better idle experience: `export_stills.py` publishes the same renders to
-`/mnt/media/Frame Art Stills`, reachable over the existing `[Media]` Samba
-share. Add them to a Shared Album from an iPad and point the Apple TV
+better idle experience: `export_stills.py` publishes the same renders to a directory on a file
+share (`config.STILLS_DIR`). Add them to a Shared Album from an iPad and point the Apple TV
 screensaver at it. The export **mirrors** rather than accumulates, so works
 dropped when the month turns over are deleted rather than piling up.
 
 If the screensaver's pan crops the side caption, export the web derivatives
 in `library/web` instead: full bleed artwork, no caption.
 
-## Running on arrakis
+## Running it unattended
 
-It runs in **CT 108 `frame-art`**, an unprivileged Debian 13 container, 2
-cores, 2 GB, 8 GB disk, DHCP so UniFi tracks it. No GPU, no special mounts.
+It runs in an unprivileged Debian 13 LXC: 2 cores, 2 GB, 8 GB disk. No GPU, no special mounts.
 Pillow does the resizing on CPU and a few hundred images take seconds.
 
-**Run it here rather than on a Mac with Sophos on it.** CryptoGuard treats
-this pipeline as ransomware, which is a fair reading: it reads and rewrites a
-few hundred JPEGs in a tight loop. The denials escalate through a run, from
+**Run it somewhere without behavioural anti-ransomware watching.** Sophos
+CryptoGuard classifies this pipeline as ransomware, which is a fair reading
+of it: a process that reads and rewrites a few hundred high entropy JPEGs in
+a tight loop looks exactly like the thing it is built to stop. The denials escalate through a run, from
 one image, to most raw reads, to the catalogue write itself, and they arrive
 as `EPERM` from `open()` rather than as anything that names the real cause.
 Network calls to the museums start timing out too. The retries in

@@ -17,7 +17,7 @@ full bleed artwork with no caption.
 
 Usage:
     python export_stills.py
-    python export_stills.py --dest "/mnt/media/Frame Art Stills"
+    python export_stills.py --dest /some/other/place
 """
 
 import argparse
@@ -28,7 +28,7 @@ from pathlib import Path
 
 import config
 
-DEFAULT_DEST = "/mnt/media/Frame Art Stills"
+DEFAULT_DEST = config.STILLS_DIR
 _UNSAFE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
@@ -51,7 +51,9 @@ def main():
 
     dest = Path(args.dest)
     if not dest.parent.exists():
-        raise SystemExit(f"{dest.parent} is not there; is the media share mounted?")
+        # Optional step: a clone with no media share should not fail here.
+        print(f"{dest.parent} is not there, skipping the stills export")
+        return
     dest.mkdir(parents=True, exist_ok=True)
 
     catalogue = json.loads(Path(config.METADATA_FILE).read_text())

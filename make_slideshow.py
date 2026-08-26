@@ -15,7 +15,7 @@ is a straight concatenation with no rescaling.
 Usage:
     python make_slideshow.py                 # default hold, shuffled
     python make_slideshow.py --hold 30
-    python make_slideshow.py --out /mnt/media/Gallery/Gallery.mp4
+    python make_slideshow.py --out /some/other/place.mp4
 """
 
 import argparse
@@ -28,7 +28,7 @@ from pathlib import Path
 
 import config
 
-DEFAULT_OUT = "/mnt/media/Gallery/Frame Art Gallery.mp4"
+DEFAULT_OUT = config.VIDEO_OUT
 
 
 def prepared_images():
@@ -74,6 +74,9 @@ def main():
         list_path = manifest.name
 
     out = Path(args.out)
+    if not out.parent.parent.exists():
+        print(f"{out.parent.parent} is not there, skipping the video render")
+        return
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp_out = out.with_suffix(".partial.mp4")
 

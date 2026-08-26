@@ -1,4 +1,13 @@
 requests>=2.31
 pillow>=10.0
-# 2024 LS03D art mode support lives in this fork, not the PyPI samsungtvws
-samsungtvws @ git+https://github.com/NickWaterton/samsung-tv-ws-api.git
+
+# Art mode support lives in this fork, not the PyPI samsungtvws, which
+# predates the art API changes. Verified against LS03C firmware; the fork
+# states 2021 to 2024 models including LS03D.
+#
+# Pinned to a commit rather than tracking master on purpose. The art API
+# method signatures were checked by hand against this exact tree, and an
+# unpinned git dependency quietly resolves to whatever master is on the day
+# you install, which would throw that away and hand every user whatever
+# upstream last pushed.
+samsungtvws @ git+https://github.com/NickWaterton/samsung-tv-ws-api.git@fe95ef1d784cd32f49bf9a07ec479576574eea07

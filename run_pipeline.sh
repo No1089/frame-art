@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Chains all three stages. Exits non-zero on the first failure so a systemd
-# timer or cron entry surfaces the problem instead of silently continuing.
+# Chains every stage. Exits non-zero on the first failure so a systemd timer
+# or cron entry surfaces the problem instead of silently continuing.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
-# No venv activation: call the interpreter directly so this behaves the same
-# under systemd, which has no shell profile.
+# Call the interpreter directly rather than activating the venv, so this
+# behaves the same under systemd, which has no shell profile.
 PY=./.venv/bin/python
 
 echo "== fetch =="
@@ -20,19 +20,10 @@ echo "== push =="
 # PRUNE_REMOTE is on, so this also retires last month's theme from the TV.
 $PY -u push_to_frame.py
 
+# Both of the following are optional and skip themselves when the media
+# share is not mounted, so this is safe on a machine that has neither.
 echo "== stills =="
-# For the second TV, whose Apple TV shows these as a screensaver.
-if [ -d /mnt/media ]; then
-    $PY -u export_stills.py
-else
-    echo "no /mnt/media, skipping the stills export"
-fi
+$PY -u export_stills.py
 
 echo "== render =="
-# For the TV with no art mode: a plain H.264 file in Jellyfin, which every
-# client direct plays. Skipped if the media mount is not there.
-if [ -d /mnt/media/Gallery ]; then
-    $PY -u make_slideshow.py
-else
-    echo "no /mnt/media/Gallery, skipping the video render"
-fi
+$PY -u make_slideshow.py

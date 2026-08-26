@@ -18,11 +18,13 @@ from pathlib import Path
 from flask import Flask, abort, jsonify, send_file, send_from_directory
 from PIL import Image, ImageOps
 
-sys.path.insert(0, "/opt/frame-art")
+# Derived, not hardcoded: the gallery has to start wherever it is cloned.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 import config  # noqa: E402
 import frame_control  # noqa: E402
 
-ROOT = Path("/opt/frame-art")
+ROOT = PROJECT_ROOT
 WEB_CACHE = ROOT / "library" / "web"
 WEB_MAX_PX = 2048
 WEB_QUALITY = 88

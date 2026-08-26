@@ -410,6 +410,18 @@ PRUNE_REMOTE = True
 PRUNE_MAX_FRACTION = 0.5
 
 # ---------------------------------------------------------------------------
+# PUBLISHING THE EXTRAS
+# ---------------------------------------------------------------------------
+# A second TV with no art mode gets the library two other ways: as stills for
+# a photo screensaver, and as a video file any client can play. Both are
+# optional. If MEDIA_ROOT does not exist the steps skip themselves, so a
+# clone with no media share still runs the pipeline end to end.
+
+MEDIA_ROOT = "/mnt/media"
+STILLS_DIR = MEDIA_ROOT + "/Frame Art Stills"
+VIDEO_OUT = MEDIA_ROOT + "/Gallery/Frame Art Gallery.mp4"
+
+# ---------------------------------------------------------------------------
 # PATHS
 # ---------------------------------------------------------------------------
 
