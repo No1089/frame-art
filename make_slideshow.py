@@ -21,6 +21,7 @@ Usage:
 import argparse
 import json
 import random
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -32,7 +33,10 @@ DEFAULT_OUT = config.VIDEO_OUT
 
 
 def prepared_images():
-    catalogue = json.loads(Path(config.METADATA_FILE).read_text())
+    path = Path(config.METADATA_FILE)
+    if not path.exists():
+        raise SystemExit(f"{path} not found. Run fetch_art.py first.")
+    catalogue = json.loads(path.read_text())
     paths = []
     for record in catalogue:
         prepared = record.get("prepared_path")
@@ -101,6 +105,10 @@ def main():
         "-movflags", "+faststart",
         str(tmp_out),
     ]
+    if shutil.which("ffmpeg") is None:
+        raise SystemExit("ffmpeg is not installed. It is a system package, "
+                         "not a pip dependency: apt install ffmpeg, or "
+                         "brew install ffmpeg.")
     print("encoding...")
     result = subprocess.run(cmd)
     Path(list_path).unlink(missing_ok=True)

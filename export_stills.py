@@ -32,6 +32,18 @@ DEFAULT_DEST = config.STILLS_DIR
 _UNSAFE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
+def load_catalogue():
+    """Read the catalogue, or say plainly what to run first.
+
+    A stack trace here is a poor welcome: the only thing that has gone wrong
+    is that the pipeline has not been run yet.
+    """
+    path = Path(config.METADATA_FILE)
+    if not path.exists():
+        raise SystemExit(f"{path} not found. Run fetch_art.py first.")
+    return json.loads(path.read_text())
+
+
 def readable_name(record, taken):
     """A name worth reading in the Files app, not the internal slug."""
     artist = (record.get("artist") or "Unknown").split(" (")[0].strip()
@@ -56,7 +68,7 @@ def main():
         return
     dest.mkdir(parents=True, exist_ok=True)
 
-    catalogue = json.loads(Path(config.METADATA_FILE).read_text())
+    catalogue = load_catalogue()
     wanted = {}
     for record in catalogue:
         prepared = record.get("prepared_path")
