@@ -9,8 +9,12 @@ wall, and swaps in a seasonal theme when the month turns.
 
 ![A landscape work, running the full width](docs/example-landscape.jpg)
 
-*Mary Cassatt, The Child's Bath (1893) and Claude Monet, Cliff Walk at
-Pourville (1882), both public domain, Art Institute of Chicago.*
+*Rendered by this code from public domain works: Mary Cassatt, [The Child's
+Bath](https://www.artic.edu/artworks/111442) (1893) and Claude Monet, [Cliff
+Walk at Pourville](https://www.artic.edu/artworks/14620) (1882), Art
+Institute of Chicago. The paintings are public domain; the curatorial text
+shown in the captions is the Art Institute's, used under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).*
 
 ## Why it exists
 
@@ -61,8 +65,22 @@ Institute's API states that its `description` field is CC-BY while the rest
 of its data is CC0, and blurbs come from `short_description` falling back to
 `description`, so a caption can carry a CC-BY obligation even when the
 painting it describes is centuries out of copyright. Every label names the
-lending museum, which satisfies that and reads better anyway. Cleveland
-reports CC0, and the Met's open access data is CC0.
+lending museum, which discharges that and reads better anyway. Cleveland
+reports `share_license_status: CC0`, and the Met's open access data is CC0,
+so neither compels it.
+
+The licence terms are the APIs' own words, not an interpretation:
+
+> The `description` field in this response is licensed under a Creative
+> Commons Attribution 4.0 Generic License (CC-By) and the Terms and
+> Conditions of artic.edu. All other data in this response is licensed under
+> a Creative Commons Zero (CC0) 1.0 designation.
+>
+> — returned in the `info` block of every Art Institute API response
+
+If you fork this and publish renders, keep the museum on the label. See
+[artic.edu/terms](https://www.artic.edu/terms) and
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 No artwork is committed to this repository beyond the two examples above.
 
