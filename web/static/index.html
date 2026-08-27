@@ -45,6 +45,12 @@
   #tv:hover { color:var(--fg); }
   #tv:disabled { opacity:.45; cursor:default; }
   #tv.hide { opacity:0; }
+
+  #src { position:fixed; bottom:max(12px,env(safe-area-inset-bottom));
+    right:max(16px,env(safe-area-inset-right)); font-size:11px; color:var(--faint);
+    text-decoration:none; opacity:.55; transition:opacity .4s ease; z-index:2; }
+  #src:hover { opacity:1; }
+  #src.hide { opacity:0; }
 </style>
 </head>
 <body>
@@ -52,6 +58,10 @@
 <div id="bar"></div>
 <div id="count"></div>
 <button id="tv" type="button">send to the Frame</button>
+<!-- AGPL section 13: anyone served this page is entitled to the source of
+     the version serving it. If you fork this, repoint the link. -->
+<a id="src" href="https://github.com/No1089/frame-art"
+   target="_blank" rel="noopener noreferrer">source</a>
 <div id="caption" class="hide">
   <div id="artist"></div>
   <div id="title"></div>
@@ -98,10 +108,11 @@ function show(i){
     back.style.display = 'none';
     setCaption(w);
     cap.classList.remove('hide'); countEl.classList.remove('hide');
-    tvBtn.classList.remove('hide');
+    tvBtn.classList.remove('hide'); srcEl.classList.remove('hide');
     clearTimeout(window._capHide);
     window._capHide = setTimeout(() => {
-      cap.classList.add('hide'); countEl.classList.add('hide'); tvBtn.classList.add('hide');
+      cap.classList.add('hide'); countEl.classList.add('hide');
+      tvBtn.classList.add('hide'); srcEl.classList.add('hide');
     }, 8000);
     preload(at+1);
   };
@@ -131,14 +142,15 @@ stage.addEventListener('touchend', e => {
   if (x0===null) return;
   const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
   if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { dx < 0 ? next() : prev(); }
-  else { cap.classList.toggle('hide'); countEl.classList.toggle('hide'); tvBtn.classList.toggle('hide'); }
+  else { [cap, countEl, tvBtn, srcEl].forEach(el => el.classList.toggle('hide')); }
   x0 = y0 = null;
 }, {passive:true});
 stage.addEventListener('click', () => {
-  cap.classList.toggle('hide'); countEl.classList.toggle('hide'); tvBtn.classList.toggle('hide');
+  [cap, countEl, tvBtn, srcEl].forEach(el => el.classList.toggle('hide'));
 });
 
 const tvBtn = document.getElementById('tv');
+const srcEl = document.getElementById('src');
 tvBtn.addEventListener('click', async e => {
   e.stopPropagation();
   tvBtn.disabled = true;
