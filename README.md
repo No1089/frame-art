@@ -268,7 +268,42 @@ python export_stills.py     # stills for a photo screensaver
 python make_slideshow.py    # an H.264 file for a TV with no art mode
 ```
 
-## Selection: artists, categories, or both
+## Changing what hangs on the wall
+
+Three selectors, all independent, all unioned and deduplicated on artist plus
+title. The shipped default is a roster of thirteen Impressionists.
+
+**One artist, without editing anything:**
+
+```bash
+python fetch_art.py --artist "Vincent van Gogh" --dry-run
+python fetch_art.py --artist "Vincent van Gogh"     # then keep them
+```
+
+**Permanently**, add to `ARTISTS` in `config.py`; every entry is queried
+against all three museums. Coverage depends on who holds what, and it varies
+more than you would expect: the Art Institute returns ten van Goghs and no
+Vermeers at all, while the Met has the Vermeers. If a name comes back empty,
+try `--source met` or `--source cma` before assuming it is broken.
+
+**A movement** rather than a person: `CATEGORIES_ENABLED` in `config.py`,
+from the shipped presets `impressionism`, `post-impressionism`, `ukiyo-e`,
+`dutch-golden-age`, `art-nouveau`, `modernism`, `landscape`. Adding a preset
+is a dict entry in `config.CATEGORIES`; copy the shape of `impressionism`.
+
+```bash
+python fetch_art.py --list-categories
+python fetch_art.py --category ukiyo-e --dry-run
+```
+
+**A season** rides on top of the rest and swaps monthly. See
+[Seasonal themes](#seasonal-themes).
+
+Always `--dry-run` first. A category sweep is broader and noisier than an
+artist query, and `ARTWORK_TYPES` matters more there, since a
+department-wide sweep will otherwise hand you furniture, coins and armour.
+
+### How the three sources differ
 
 `ARTISTS` and `CATEGORIES_ENABLED` are independent selectors. Both run, and
 results are unioned and deduplicated on artist plus title. Every catalogue
