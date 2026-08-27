@@ -84,20 +84,91 @@ offer your users the source of *your* version. `web/static/index.html` has
 a source link in it for exactly that reason; point it at your fork rather
 than removing it.
 
-## Running it
+## Getting started
+
+You need a Samsung The Frame on the same network, Python 3.11 or newer, and
+about ten minutes. The museum APIs are all keyless, so there is nothing to
+sign up for.
+
+**1. Install.**
 
 ```bash
-python -m venv .venv && ./.venv/bin/pip install -r requirements.txt
-# put your TV's address and a real contact in config_local.py, untracked:
-#   TV_HOST = "10.0.0.5"
-#   HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; me@example.com)"
-# then choose what to collect in config.py
-./.venv/bin/python fetch_art.py --dry-run     # look before downloading
-./.venv/bin/python push_to_frame.py --check   # pair, and probe the TV
+git clone https://github.com/No1089/frame-art.git && cd frame-art
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements.txt
 ```
 
-`run_pipeline.sh` chains every stage and is what the monthly timer runs.
-Unit files are in `deploy/`.
+Two things are system packages rather than pip ones. A serif font, or labels
+fall back to a bitmap face and look it; and `ffmpeg`, only if you want the
+video render.
+
+```bash
+sudo apt install fonts-dejavu-core ffmpeg     # Debian, Ubuntu
+brew install ffmpeg                           # macOS already has fonts
+```
+
+**2. Tell it about your TV.** Create `config_local.py`, which is not
+committed:
+
+```python
+TV_HOST = "10.0.0.5"    # your TV's address, ideally a DHCP reservation
+HTTP_USER_AGENT = "frame-art-pipeline/1.0 (personal use; me@example.com)"
+```
+
+The Art Institute asks for a real contact so they can reach whoever is
+hitting their API; use one. To find the TV, look for a device named after
+the model in your router, then confirm it answers:
+
+```bash
+curl -s http://10.0.0.5:8001/api/v2/ | python3 -m json.tool
+```
+
+That endpoint needs no pairing and tells you the model, the panel resolution
+and whether `FrameTVSupport` is true. **Check the resolution before anything
+else**: the 32 inch Frame is 1920x1080 while every other size is 3840x2160,
+and `TARGET_WIDTH_PX` in `config.py` assumes the former.
+
+**3. Pair with the TV.** The first connection makes it show an allow prompt,
+which you accept with the remote:
+
+```bash
+./.venv/bin/python push_to_frame.py --check
+```
+
+Leave the TV on, not powered down: The Frame drops off the network entirely
+when it is off, and wake-on-LAN cannot help because the wifi radio is off
+too. If nothing appears on screen, wake it to its home screen first.
+
+**4. Look before you download.** The shipped selection is thirteen
+Impressionists; `config.py` is where you change that.
+
+```bash
+./.venv/bin/python fetch_art.py --dry-run
+```
+
+If that returns recognisable works by recognisable artists, run it for real.
+A full fetch takes 20 to 40 minutes: all three museums are rate limited to
+one request a second and the Met needs several requests per work.
+
+```bash
+./.venv/bin/python fetch_art.py
+./.venv/bin/python prepare_images.py
+./.venv/bin/python push_to_frame.py --limit 1 --select
+```
+
+That last line uploads exactly one image and puts it on the wall, which is
+worth doing before committing to a few hundred. Once it looks right, drop
+the flags and run the whole thing.
+
+## Running it unattended
+
+`run_pipeline.sh` chains every stage. `deploy/` has systemd units for it,
+the monthly theme rotation and the web gallery; they assume `/opt/frame-art`
+and a `.venv` inside it, so adjust the paths if you put it elsewhere.
+
+Rotation is the one thing not to automate naively. See **Rotation** below:
+driving it from a timer without the art mode guard will interrupt whatever
+is plugged into the TV.
 
 ## Status
 
