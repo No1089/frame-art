@@ -54,7 +54,7 @@ Sources are the Art Institute of Chicago, the Metropolitan Museum of Art and
 the Cleveland Museum of Art. All three are keyless, and only public domain
 or CC0 works are ever downloaded.
 
-## Licensing
+## Rights in the artwork
 
 The paintings are public domain. **The words are not necessarily.** The Art
 Institute's API states that its `description` field is CC-BY while the rest
@@ -219,25 +219,35 @@ prepare_images.py  library/raw  ->  library/prepared/  (1920x1080 JPEG)
 push_to_frame.py   library/prepared -> the TV, matte=none, over websocket
 ```
 
-## Setup
+## Commands
+
+Installation and first run are under **Getting started** above. This is the
+rest of what the scripts take.
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install requests pillow
-pip install git+https://github.com/NickWaterton/samsung-tv-ws-api.git
-```
-
-Then edit `config.py`. At minimum set `TV_HOST`, plus `ARTISTS` and/or
-`CATEGORIES_ENABLED`.
-
-```bash
+# choosing what to collect
 python fetch_art.py --list-categories
+python fetch_art.py --list-themes
 python fetch_art.py --category impressionism --dry-run   # inspect the picks
-python fetch_art.py
-python prepare_images.py
-python push_to_frame.py --check           # do this before the first real upload
+python fetch_art.py --artist "Berthe Morisot"
+python fetch_art.py --theme-only --month 2 --dry-run     # try one theme
+python fetch_art.py --no-theme                           # core roster only
+
+# rendering
+python prepare_images.py            # only what is new
+python prepare_images.py --force    # everything, after a layout change
+
+# the TV
+python push_to_frame.py --check              # pair, and probe capabilities
 python push_to_frame.py --limit 1 --select   # one image, then look at the wall
-python push_to_frame.py
+python push_to_frame.py                      # everything not yet uploaded
+python push_to_frame.py --rotate             # change the piece now
+python push_to_frame.py --fix-mattes         # re-assert matte none
+python push_to_frame.py --prune              # retire what left the catalogue
+
+# the other outputs
+python export_stills.py     # stills for a photo screensaver
+python make_slideshow.py    # an H.264 file for a TV with no art mode
 ```
 
 ## Selection: artists, categories, or both
@@ -481,10 +491,11 @@ dropped when the month turns over are deleted rather than piling up.
 If the screensaver's pan crops the side caption, export the web derivatives
 in `library/web` instead: full bleed artwork, no caption.
 
-## Running it unattended
+## Where to run it
 
-It runs in an unprivileged Debian 13 LXC: 2 cores, 2 GB, 8 GB disk. No GPU, no special mounts.
-Pillow does the resizing on CPU and a few hundred images take seconds.
+An unprivileged Debian 13 LXC is plenty: 2 cores, 2 GB, 8 GB disk. No GPU
+and no special mounts. Pillow does the resizing on CPU and a few hundred
+images take seconds.
 
 **Run it somewhere without behavioural anti-ransomware watching.** Sophos
 CryptoGuard classifies this pipeline as ransomware, which is a fair reading
