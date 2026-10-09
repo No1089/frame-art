@@ -215,6 +215,9 @@ def aic_by_category(preset, limit):
 #      artistDisplayName, which _met_collect already does.
 
 MET_BASE = "https://collectionapi.metmuseum.org/public/collection/v1"
+# The v1 search was retired on 2026-10-01 (HTTP 410). v1.1 is Elastic-backed and
+# paginated with offset/limit; objects and departments stay on v1.
+MET_SEARCH = "https://collectionapi.metmuseum.org/public/collection/v1.1/search"
 
 
 def met_department_ids(names):
@@ -234,7 +237,8 @@ def met_department_ids(names):
 
 
 def _met_collect(params, limit, artist_filter=None):
-    ids = (_get(f"{MET_BASE}/search", params=params).json().get("objectIDs") or [])
+    ids = (_get(MET_SEARCH, params=params + [("limit", limit * 6)]).json()
+           .get("objectIDs") or [])
     results = []
     for object_id in ids[:limit * 6]:
         if len(results) >= limit:
