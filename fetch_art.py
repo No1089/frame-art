@@ -540,6 +540,11 @@ def main():
 
     metadata_path = Path(config.METADATA_FILE)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    # Every search failing (no network, every API down) must not replace a
+    # good catalogue with an empty one: the web gallery reads this file, and
+    # the TV would be pruned against it. Keep what we have and fail loudly.
+    if not catalogue and metadata_path.exists() and metadata_path.stat().st_size > 2:
+        raise SystemExit(f"no works found; leaving the existing {metadata_path} untouched")
     metadata_path.write_text(json.dumps(catalogue, indent=2, ensure_ascii=False))
     print(f"\n{len(catalogue)} works in {metadata_path}")
 
