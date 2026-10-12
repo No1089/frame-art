@@ -470,6 +470,44 @@ and let the artwork fill whatever shape the screen happens to be.
 A reverse proxy in front of it resolves the container by hostname rather
 than address, so it can keep a DHCP lease and nothing hardcodes an IP.
 
+### API
+
+The gallery page is one client of a small JSON API; other pages (a kitchen
+dashboard's screensaver, for one) use the same three calls, so treat the
+field names below as an interface.
+
+| Call | Returns |
+|---|---|
+| `GET /api/works` | Every work whose raw file is on disk, as a JSON array (see below). Read live from the catalogue on each call. |
+| `GET /img/<id>` | The work as a JPEG, longest side 2048 px, built on first request into `library/web/` and served with a one day cache header. `404` for an unknown id. |
+| `POST /api/next` | Shows the next piece on the Frame now, forcing art mode (see Rotation). `{"ok": true, …}` with what it showed, `503` when the TV is off, `409` when nothing has been uploaded yet. |
+| `GET /healthz` | `{"works": n}`, the number of catalogue records. |
+
+Each entry in `/api/works`:
+
+```json
+{
+  "id": "aic-64818",
+  "artist": "Claude Monet",
+  "title": "Stacks of Wheat (End of Summer)",
+  "date": "1890–91",
+  "medium": "Oil on canvas",
+  "credit": "Gift of Arthur M. Wood, Sr. in memory of Pauline Palmer Wood",
+  "blurb": "The monumental stacks that Claude Monet depicted…",
+  "source": "aic",
+  "museum": "Art Institute of Chicago",
+  "selected_by": "artist:Claude Monet"
+}
+```
+
+`id` is `<source>-<source id>` and is what `/img/` takes. `artist` has
+Cleveland's "(French, 1848-1894)" suffix already stripped. `blurb` and
+`credit` may be empty, `title` never is. If you show `blurb` anywhere, keep
+`museum` next to it: the Art Institute's descriptions are CC BY, which is
+why the field exists at all.
+
+Nothing in the API needs a key, and nothing but `/api/next` changes anything.
+
 ## Rotation
 
 **Rotation is driven from here, but only while the TV is already showing
