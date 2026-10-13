@@ -1,5 +1,6 @@
 requests>=2.31
 pillow>=10.0
+flask>=3.0          # the web gallery
 
 # Art mode support lives in this fork, not the PyPI samsungtvws, which
 # predates the art API changes. Verified against LS03C firmware; the fork

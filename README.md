@@ -213,6 +213,12 @@ attempt to connect without a token puts the allow prompt on the TV. Without a
 Frame at all, that is the whole point: the library still fetches and renders,
 and the gallery serves it, which is what a kitchen dashboard wants.
 
+What has been run in a container so far is everything short of the TV: the
+gallery, a monthly run, the month stamp catching up, and the unpaired guards.
+Pairing from inside the container and the rotation check against a real Frame
+have not. They are the same code as on the LXC, but Docker's network and the
+token symlink are new.
+
 The video render needs ffmpeg, which is a few hundred megabytes, so the image
 leaves it out unless built with `FFMPEG=1 docker compose build`. The stills and
 the video go to `/mnt/media`, mounted in the compose file where indicated.
@@ -509,7 +515,7 @@ field names below as an interface.
 |---|---|
 | `GET /api/works` | Every work whose raw file is on disk, as a JSON array (see below). Read live from the catalogue on each call. |
 | `GET /img/<id>` | The work as a JPEG, longest side 2048 px, built on first request into `library/web/` and served with a one day cache header. `404` for an unknown id. |
-| `POST /api/next` | Shows the next piece on the Frame now, forcing art mode (see Rotation). `{"ok": true, …}` with what it showed, `503` when the TV is off, `409` when nothing has been uploaded yet. |
+| `POST /api/next` | Shows the next piece on the Frame now, forcing art mode (see Rotation). `{"ok": true, …}` with what it showed, `503` when the TV is off or not paired yet (it never pairs on its own), `409` when nothing has been uploaded yet. |
 | `GET /healthz` | `{"works": n}`, the number of catalogue records. |
 
 Each entry in `/api/works`:

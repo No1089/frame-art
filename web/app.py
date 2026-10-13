@@ -121,7 +121,16 @@ def api_next():
     Anything on the LAN can call this. That is the same exposure as the
     other services behind this Caddy, but it does mean the page can move
     the TV.
+
+    Unpaired, it refuses rather than connecting: connect() would pair, and
+    pairing puts the allow prompt on the TV, which is for a person standing
+    at it, not for a button anyone on the LAN can press.
     """
+    token = Path(config.TV_TOKEN_FILE)
+    if not (token if token.is_absolute() else ROOT / token).exists():
+        return jsonify({"ok": False, "error": "not paired with a TV; "
+                        "to pair: python push_to_frame.py --check"}), 503
+
     async def run():
         from push_to_frame import connect
         tv = await connect()
