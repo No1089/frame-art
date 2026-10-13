@@ -1,0 +1,11 @@
+.git
+.github
+.venv
+__pycache__
+library
+tv-token.txt
+config_local.py
+docs
+tests
+deploy/*.service
+deploy/*.timer

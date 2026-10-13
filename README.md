@@ -188,6 +188,35 @@ Rotation is the one thing not to automate naively. See **Rotation** below:
 driving it from a timer without the art mode guard will interrupt whatever
 is plugged into the TV.
 
+### In a container
+
+The same thing as one image, `ghcr.io/no1089/frame-art`, for a NAS or
+anything else that runs Docker. `docker-compose.yml` starts two containers
+from it: `web`, the gallery on port 5000, and `pipeline`, which is the two
+timers above in a loop: the pipeline on the first of the month at 04:00
+container time (`TZ`), and the rotation check every minute. Everything that
+is state, the library, the catalogue, `uploaded.json`, the web derivatives and
+the pairing token, is in `./library`, so that one directory is the backup.
+
+```bash
+# config_local.py as in Getting started, first: Docker makes a directory of
+# that name if the file is missing, which does nothing useful.
+docker compose up -d
+docker compose run --rm pipeline python push_to_frame.py --check   # pair; accept the prompt on the TV
+docker compose run --rm pipeline python fetch_art.py --dry-run
+docker compose run --rm pipeline ./run_pipeline.sh                 # now, rather than on the 1st
+```
+
+Pairing is deliberately not automatic. Until `library/tv-token.txt` exists the
+rotation check does nothing and the monthly run skips the upload, because every
+attempt to connect without a token puts the allow prompt on the TV. Without a
+Frame at all, that is the whole point: the library still fetches and renders,
+and the gallery serves it, which is what a kitchen dashboard wants.
+
+The video render needs ffmpeg, which is a few hundred megabytes, so the image
+leaves it out unless built with `FFMPEG=1 docker compose build`. The stills and
+the video go to `/mnt/media`, mounted in the compose file where indicated.
+
 ## Status
 
 Built for one TV in one house and used daily, not packaged as a product.

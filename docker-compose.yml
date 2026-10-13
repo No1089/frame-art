@@ -1,0 +1,39 @@
+# The gallery and the pipeline, from one image. Everything that is state is in
+# ./library: the raw and prepared artwork, the catalogue, uploaded.json, the
+# web derivatives and the TV pairing token. config_local.py must exist before
+# the first `up`, or Docker creates a directory of that name in its place.
+services:
+  web:
+    image: ghcr.io/no1089/frame-art
+    build:
+      context: .
+      args:
+        FFMPEG: "${FFMPEG:-0}"      # FFMPEG=1 docker compose build, for the video render
+    container_name: frame-art
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./library:/app/library
+      - ./config_local.py:/app/config_local.py:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/healthz', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+    restart: unless-stopped
+
+  # The timers: the pipeline on the 1st at 04:00 container time, the rotation
+  # check every minute. It does nothing to the TV until it has been paired.
+  pipeline:
+    image: ghcr.io/no1089/frame-art
+    container_name: frame-art-pipeline
+    command: deploy/scheduler.sh
+    volumes:
+      - ./library:/app/library
+      - ./config_local.py:/app/config_local.py:ro
+      # The second TV's stills and video, if there is one. Needs FFMPEG=1 above.
+      # - /mnt/media:/mnt/media
+    environment:
+      - TZ=${TZ:-UTC}
+    restart: unless-stopped
