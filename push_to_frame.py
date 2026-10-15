@@ -41,6 +41,7 @@ UPLOAD_TIMEOUT_S = 30
 
 # How long to leave the pairing prompt up waiting for someone to accept it.
 PAIRING_TIMEOUT_S = 90
+CONNECT_TIMEOUT_S = 15     # a TV on the LAN answers in under a second, or not at all
 
 
 def load_manifest():
@@ -119,11 +120,16 @@ async def connect():
     # unreachable TV raises here rather than at start_listening. Both are
     # turned into one actionable line: a weekly timer firing at a switched
     # off TV should not be sixty lines of urllib3 traceback in the journal.
+    # timeout= is the websocket's open timeout. Without it the fork passes None,
+    # which is no timeout at all: a TV address that doesn't route (a typo in
+    # config_local.py, say) then hangs the rotation check and the gallery's
+    # /api/next for minutes instead of failing with the hint below.
     try:
         tv = SamsungTVAsyncArt(host=config.TV_HOST,
                                port=config.TV_PORT,
                                token_file=config.TV_TOKEN_FILE,
-                               name="frame-art-pipeline")
+                               name="frame-art-pipeline",
+                               timeout=CONNECT_TIMEOUT_S)
         await tv.start_listening()
     except Exception as error:
         hint = PAIRING_HINT if "timeOut" in str(error) else OFFLINE_HINT

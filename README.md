@@ -207,6 +207,10 @@ docker compose run --rm pipeline python fetch_art.py --dry-run
 docker compose run --rm pipeline ./run_pipeline.sh                 # now, rather than on the 1st
 ```
 
+The first start does not run the pipeline; the README's "look before you
+download" applies in a container too. It runs on the 1st from then on, and
+by hand with the last line above whenever you like.
+
 Pairing is deliberately not automatic. Until `library/tv-token.txt` exists the
 rotation check does nothing and the monthly run skips the upload, because every
 attempt to connect without a token puts the allow prompt on the TV. Without a

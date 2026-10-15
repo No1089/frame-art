@@ -19,6 +19,14 @@ paired() {
 sys.exit(0 if pathlib.Path(config.TV_TOKEN_FILE).exists() else 1)'
 }
 
+# A first start is not the 1st of the month. The README says to dry-run before
+# downloading anything, so the first run is a person's: run_pipeline.sh by
+# hand, or wait for the month to turn.
+if [ ! -f "$STAMP" ]; then
+    mkdir -p library && date +%Y-%m > "$STAMP"
+    echo "first start: the pipeline runs on the 1st; to run it now: docker compose run --rm pipeline ./run_pipeline.sh"
+fi
+
 while true; do
     month=$(date +%Y-%m)
     if [ "$(date +%H)" -ge "$HOUR" ] && [ "$(cat "$STAMP" 2>/dev/null)" != "$month" ]; then
