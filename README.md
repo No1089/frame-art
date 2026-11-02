@@ -86,21 +86,13 @@ No artwork is committed to this repository beyond the two examples above.
 
 ## Licence
 
-[AGPL-3.0](LICENSE). Use it, change it, run it, put it on your own wall.
+[PolyForm Noncommercial 1.0.0](LICENSE). Use it, change it, run it, share it,
+put it on your own wall; not for money, and keep the notice line. It is not an
+OSI open-source licence, by that one clause. Versions published before
+2 November 2026 were AGPL-3.0, and copies obtained then keep those terms.
 
-The one condition worth stating plainly: if you distribute a modified
-version, **or run one as a network service**, the source has to stay open
-under the same licence. That second clause is why this is AGPL rather than
-GPL, since the thing ships a web gallery and plain GPL would let someone
-host a closed fork of it.
-
-This was built for love rather than money and there is nothing to monetise.
-Commercial use is allowed; taking it proprietary is not.
-
-If you run the gallery publicly, note that AGPL section 13 obliges you to
-offer your users the source of *your* version. `web/static/index.html` has
-a source link in it for exactly that reason; point it at your fork rather
-than removing it.
+The artworks and captions are not covered by this licence; their terms are the
+museums' own, as described above.
 
 ## Getting started
 
