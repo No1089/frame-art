@@ -237,7 +237,7 @@ def met_department_ids(names):
     return ids
 
 
-def _met_collect(params, limit, artist_filter=None):
+def _met_collect(params, limit, artist_filter=None, keep=None):
     ids = (_get(MET_SEARCH, params=params + [("limit", limit * 6)]).json()
            .get("objectIDs") or [])
     results = []
@@ -265,7 +265,7 @@ def _met_collect(params, limit, artist_filter=None):
             surname = artist_filter.split()[-1].lower()
             if surname not in artist_name.lower():
                 continue
-        results.append({
+        record = {
             "source": "met",
             "source_id": str(object_id),
             "title": item.get("title") or "Untitled",
@@ -278,7 +278,12 @@ def _met_collect(params, limit, artist_filter=None):
             "medium": item.get("medium") or "",
             "credit": item.get("creditLine") or "",
             "image_url": item["primaryImage"],
-        })
+        }
+        # Filtering here rather than after the search keeps scanning past
+        # the misses, so a filtered query still fills its budget.
+        if keep and not keep(record):
+            continue
+        results.append(record)
     return results
 
 
@@ -326,13 +331,18 @@ def met_by_category(preset, limit):
     # productive query, the style keyword against the department, is not
     # capped at two.
     per_query = max(6, limit // max(1, len(queries)))
+    keywords = preset.get("title_keywords")
+    keep = (lambda record: title_matches(record, keywords)) if keywords else None
     results = []
     for params, artist_filter in queries:
         if len(results) >= limit:
             break
+        # With a title filter the subject query is the precise one, so it
+        # gets the whole budget instead of an equal share with the hints.
+        budget = limit - len(results) if keep and artist_filter is None else per_query
         try:
-            results.extend(_met_collect(params, per_query,
-                                        artist_filter=artist_filter))
+            results.extend(_met_collect(params, budget,
+                                        artist_filter=artist_filter, keep=keep))
         except requests.RequestException as error:
             print(f"  met query failed: {error}")
     return results[:limit]
