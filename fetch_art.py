@@ -105,32 +105,20 @@ def type_allowed(type_name):
 AIC_FIELDS = ["id", "title", "artist_title", "date_display", "image_id",
               "is_public_domain", "style_titles", "artwork_type_title",
               "short_description", "description", "medium_display",
-              "credit_line", "thumbnail"]
+              "credit_line"]
 AIC_SEARCH = "https://api.artic.edu/api/v1/artworks/search"
 
 
-def aic_image_url(image_id, width=None, height=None):
-    """IIIF URL for an AIC image, its long edge AIC_IMAGE_LONG_EDGE.
+def aic_image_url(image_id):
+    """IIIF URL for an AIC image.
 
     Note the "full/" region segment before the size. AIC returns 403 for
     both full/full and full/max, so an explicit size is mandatory, and
     dropping the region while adding one turns every download into a 403.
-    Only a width ("w,") is accepted now, so a portrait asks for the width
-    that makes its height the long edge. Never upscaled; unknown dimensions
-    fall back to a width that suits landscapes.
+    See config.AIC_IMAGE_SIZE for why it is fixed at 1686 wide.
     """
-    edge = config.AIC_IMAGE_LONG_EDGE
-    if width and height:
-        request = min(width, round(edge * width / max(width, height)))
-    else:
-        request = edge
     return (f"https://www.artic.edu/iiif/2/{image_id}"
-            f"/full/{request},/0/default.jpg")
-
-
-def _aic_dimensions(item):
-    thumbnail = item.get("thumbnail") or {}
-    return thumbnail.get("width"), thumbnail.get("height")
+            f"/full/{config.AIC_IMAGE_SIZE}/0/default.jpg")
 
 
 def aic_must(preset):
@@ -188,8 +176,7 @@ def _aic_run(must, limit):
                                 or item.get("description")),
             "medium": item.get("medium_display") or "",
             "credit": item.get("credit_line") or "",
-            "image_url": aic_image_url(item["image_id"],
-                                       *_aic_dimensions(item)),
+            "image_url": aic_image_url(item["image_id"]),
         })
     return results
 

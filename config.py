@@ -68,12 +68,13 @@ MIN_SOURCE_LONG_EDGE_PX = 1400
 
 # IIIF size for Art Institute downloads. Their server returns 403 for both
 # "full/full" and "full/max", so an explicit size is mandatory rather than a
-# preference. Since November 2026 it also refuses the "!w,h" best-fit form and
-# a bare ",h", and caps widths somewhere between 3000 and 5000: only "w,"
-# works. So the request width is worked out from the image's own dimensions
-# (thumbnail.width/height in the search result) to give this long edge,
-# ample for a 1920x1080 panel and keeping files near a megabyte.
-AIC_IMAGE_LONG_EDGE = 2560
+# preference. Since November 2026 only the sizes AIC's own website uses,
+# "843," and "1686,", come back: Cloudflare serves those from its cache, and
+# anything else (including the old "!2560,2560") reaches an origin that
+# answers scripts with 403. 1686 wide clears MIN_SOURCE_LONG_EDGE_PX and is
+# plenty for a 1920x1080 panel once fitted. The AIC-User-Agent header is
+# still needed: without it Cloudflare challenges even the cached sizes.
+AIC_IMAGE_SIZE = "1686,"
 
 # Cleveland publishes three derivatives per work and the API calls the
 # preservation master "full". That is a TIFF, and it can run to hundreds of
