@@ -104,3 +104,21 @@ class TestTextCleaning:
     def test_empty_input_is_empty_output(self):
         assert fetch_art.plain_text(None) == ""
         assert fetch_art.plain_text("") == ""
+
+
+def test_excluded_artists_match_whole_words_without_accents(monkeypatch):
+    import config
+    import fetch_art
+    monkeypatch.setattr(config, "EXCLUDED_ARTISTS", ["Manet"])
+    assert fetch_art.artist_excluded("Édouard Manet")
+    assert fetch_art.artist_excluded("Edouard Manet")
+    assert not fetch_art.artist_excluded("Claude Monet")
+    assert not fetch_art.artist_excluded("Unknown")
+
+
+def test_title_keywords_match_whole_words():
+    import fetch_art
+    keywords = ["winter", "ice"]
+    assert fetch_art.title_matches({"title": "Rue Eugène Moussoir at Moret: Winter"}, keywords)
+    assert not fetch_art.title_matches({"title": "Poplars, Eragny"}, keywords)
+    assert not fetch_art.title_matches({"title": "The Police Station"}, keywords)

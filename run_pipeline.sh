@@ -11,7 +11,9 @@ PY=./.venv/bin/python
 
 echo "== fetch =="
 # No arguments: the core roster plus whichever theme this month calls for.
-$PY -u fetch_art.py
+# Arguments go to fetch_art.py, e.g. `run_pipeline.sh --month 1` to run a
+# different month's theme now (the next timer run goes back to the calendar).
+$PY -u fetch_art.py "$@"
 
 echo "== prepare =="
 $PY -u prepare_images.py

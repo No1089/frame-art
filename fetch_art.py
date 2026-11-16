@@ -29,6 +29,7 @@ import hashlib
 import json
 import re
 import time
+import unicodedata
 from datetime import date
 from html import unescape
 from pathlib import Path
@@ -422,6 +423,23 @@ CATEGORY_SEARCHERS = {"aic": aic_by_category, "met": met_by_category,
 
 # ---------------------------------------------------------------------------
 
+def _words(text):
+    plain = unicodedata.normalize("NFKD", text or "")
+    plain = "".join(c for c in plain if not unicodedata.combining(c))
+    return set(re.findall(r"[a-z]+", plain.lower()))
+
+
+def artist_excluded(artist):
+    """True when any EXCLUDED_ARTISTS entry is a whole word, or words, of the name."""
+    words = _words(artist)
+    return any(_words(name) <= words
+               for name in getattr(config, "EXCLUDED_ARTISTS", []))
+
+
+def title_matches(record, keywords):
+    return bool(_words(record.get("title")) & {k.lower() for k in keywords})
+
+
 def slugify(text, max_length=60):
     slug = "".join(c.lower() if c.isalnum() else "-" for c in text)
     while "--" in slug:
@@ -526,7 +544,14 @@ def main():
                 continue
             print(f"  {len(found)} candidates")
 
+            if kind == "theme" and source != "aic" and argument.get("title_keywords"):
+                kept = [r for r in found if title_matches(r, argument["title_keywords"])]
+                print(f"  {len(kept)} after the title filter")
+                found = kept
+
             for record in found:
+                if artist_excluded(record["artist"]):
+                    continue
                 key = (slugify(record["artist"], 30), slugify(record["title"], 50))
                 if key in seen_keys:
                     continue

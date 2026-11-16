@@ -34,7 +34,6 @@ ARTISTS = [
     "Berthe Morisot",
     "Mary Cassatt",
     "Gustave Caillebotte",
-    "Edouard Manet",
     "Frederic Bazille",
     "Armand Guillaumin",
     "Eva Gonzales",
@@ -57,6 +56,12 @@ MAX_PER_QUERY_PER_SOURCE = 10
 # Restrict to these artwork types. Keeps coins, furniture and armour out.
 # Set to None to accept anything the source returns.
 ARTWORK_TYPES = ["Painting", "Drawing and Watercolor"]
+
+# Never collected, whatever selected them: roster, category or theme.
+# Matched on whole words of the artist name, accents and case ignored, so
+# "Manet" catches the Met's "Edouard Manet" and AIC's "Édouard Manet" but
+# not Monet.
+EXCLUDED_ARTISTS = ["Manet"]
 
 # Reject anything whose native long edge is below this many pixels.
 MIN_SOURCE_LONG_EDGE_PX = 1400
@@ -454,17 +459,26 @@ UPLOAD_MANIFEST_FILE = "./library/uploaded.json"
 #                  is empty
 #   artist_hints   representative painters; for met and cma these carry the
 #                  precision that the missing subject facet cannot
+#   title_keywords optional; met and cma results are kept only when the
+#                  title contains one of these words (AIC is not filtered)
 
 THEME_ENABLED = True
 
-# Kept per theme, per source. Smaller than the core on purpose: the theme is
-# a seasonal accent over a permanent collection, not a replacement for it.
-MAX_PER_THEME_PER_SOURCE = 8
+# Kept per theme, per source. Raised from 8 so the season is a visible share
+# of the wall, not a rare accent: the AIC subject facets cap most themes
+# well below this anyway.
+MAX_PER_THEME_PER_SOURCE = 25
 
 THEMES = {
     1: {
         "name": "winter light",
         "terms": ["snow winter landscape"],
+        # Met and Cleveland have no subject facet, so their artist hint
+        # queries return the hinted painters' summers too. Keep only titles
+        # that say winter. AIC is matched on subject and is not filtered.
+        "title_keywords": ["winter", "snow", "frost", "ice", "icebound",
+                           "skating", "skaters", "sleigh", "january",
+                           "february", "december"],
         "year_from": 1600, "year_to": 1950,
         "aic_subjects": ["winter", "snow"],
         "met_departments": ["European Paintings"],
@@ -517,7 +531,7 @@ THEMES = {
         "met_departments": ["European Paintings"],
         "cma_departments": ["European Painting and Sculpture"],
         "artist_hints": ["Pierre-Auguste Renoir", "Henri Fantin-Latour",
-                         "Edouard Manet", "Gustave Caillebotte"],
+                         "Gustave Caillebotte"],
     },
     6: {
         "name": "water and boating",
