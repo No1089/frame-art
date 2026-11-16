@@ -717,7 +717,7 @@ Cassatt. Its contribution is small but the pieces it does yield are strong.
 
 **Image derivatives are not interchangeable, and the obvious choice is wrong
 in both cases.** AIC returns 403 for `full/full` *and* `full/max`, so an
-explicit IIIF size is mandatory: see `config.AIC_IMAGE_SIZE`. Cleveland's
+explicit IIIF width is mandatory (no `!w,h` or `,h` since November 2026): see `config.AIC_IMAGE_LONG_EDGE`. Cleveland's
 `images.full` is the preservation master and is a TIFF that can exceed
 480 MB for one painting, so `config.CMA_IMAGE_PREFERENCE` asks for `print`
 instead. Neither of these can be caught without running against live data.

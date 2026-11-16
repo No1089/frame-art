@@ -51,14 +51,25 @@ class TestAicImageUrl:
     "full/" while adding an explicit size turns every download into a 403.
     """
 
-    def test_url_has_region_then_size(self):
+    def test_url_has_region_then_width_only_size(self):
         url = fetch_art.aic_image_url("some-image-id")
-        assert f"/full/{config.AIC_IMAGE_SIZE}/0/default.jpg" in url
+        edge = config.AIC_IMAGE_LONG_EDGE
+        assert url.endswith(f"/some-image-id/full/{edge},/0/default.jpg")
 
-    def test_size_is_never_full_or_max(self):
-        assert config.AIC_IMAGE_SIZE not in ("full", "max")
-        url = fetch_art.aic_image_url("x")
+    def test_size_is_never_full_max_or_best_fit(self):
+        url = fetch_art.aic_image_url("x", 8923, 6981)
         assert "/full/full/" not in url and "/full/max/" not in url
+        assert "!" not in url
+
+    def test_landscape_long_edge_is_the_width(self):
+        assert "/full/2560,/" in fetch_art.aic_image_url("x", 8923, 6981)
+
+    def test_portrait_width_gives_a_long_edge_height(self):
+        # 3000 x 4000: a 2560 tall image is 1920 wide
+        assert "/full/1920,/" in fetch_art.aic_image_url("x", 3000, 4000)
+
+    def test_never_upscaled(self):
+        assert "/full/1200,/" in fetch_art.aic_image_url("x", 1200, 800)
 
 
 class TestAicQueryShape:

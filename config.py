@@ -68,10 +68,12 @@ MIN_SOURCE_LONG_EDGE_PX = 1400
 
 # IIIF size for Art Institute downloads. Their server returns 403 for both
 # "full/full" and "full/max", so an explicit size is mandatory rather than a
-# preference. "!w,h" means best fit inside that box with the aspect ratio
-# kept, so this yields a 2560px long edge whatever the orientation, which is
-# ample for a 1920x1080 panel and keeps files near a megabyte.
-AIC_IMAGE_SIZE = "!2560,2560"
+# preference. Since November 2026 it also refuses the "!w,h" best-fit form and
+# a bare ",h", and caps widths somewhere between 3000 and 5000: only "w,"
+# works. So the request width is worked out from the image's own dimensions
+# (thumbnail.width/height in the search result) to give this long edge,
+# ample for a 1920x1080 panel and keeping files near a megabyte.
+AIC_IMAGE_LONG_EDGE = 2560
 
 # Cleveland publishes three derivatives per work and the API calls the
 # preservation master "full". That is a TIFF, and it can run to hundreds of
