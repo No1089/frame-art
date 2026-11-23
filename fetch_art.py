@@ -533,6 +533,7 @@ def main():
 
     catalogue = []
     seen_keys = set()
+    by_key = {}
     core_limit = config.MAX_PER_QUERY_PER_SOURCE
 
     # Themes run last so the core roster wins on dedupe: a work that is both
@@ -565,14 +566,31 @@ def main():
                     continue
                 key = (slugify(record["artist"], 30), slugify(record["title"], 50))
                 if key in seen_keys:
+                    # A core work the theme also found is in season too,
+                    # though it keeps its core label.
+                    if kind == "theme" and key in by_key:
+                        by_key[key].setdefault("season", label)
                     continue
                 seen_keys.add(key)
                 record["selected_by"] = f"{kind}:{label}"
+                if kind == "theme":
+                    record["season"] = label
                 if args.dry_run:
                     print(f"    {record['artist']} - {record['title']}")
                     catalogue.append(record)
+                    by_key[key] = record
                 elif download(record, raw_dir):
                     catalogue.append(record)
+                    by_key[key] = record
+
+    # Core works the theme searches missed but whose titles say the season,
+    # e.g. a Pissarro "...in Winter" that AIC does not tag with snow.
+    for m in months:
+        keywords = config.THEMES[m].get("title_keywords")
+        if keywords:
+            for record in catalogue:
+                if "season" not in record and title_matches(record, keywords):
+                    record["season"] = config.THEMES[m]["name"]
 
     if args.dry_run:
         print(f"\ndry run: {len(catalogue)} works would be downloaded")

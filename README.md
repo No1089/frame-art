@@ -527,7 +527,8 @@ Each entry in `/api/works`:
   "blurb": "The monumental stacks that Claude Monet depicted…",
   "source": "aic",
   "museum": "Art Institute of Chicago",
-  "selected_by": "artist:Claude Monet"
+  "selected_by": "artist:Claude Monet",
+  "season": ""
 }
 ```
 
@@ -536,6 +537,12 @@ Cleveland's "(French, 1848-1894)" suffix already stripped. `blurb` and
 `credit` may be empty, `title` never is. If you show `blurb` anywhere, keep
 `museum` next to it: the Art Institute's descriptions are CC BY, which is
 why the field exists at all.
+
+`season` is the month's theme name (`"winter light"`) when the work belongs
+to it and `""` otherwise. Core works count when the theme search also found
+them or their title has one of the theme's `title_keywords`, so a roster
+Pissarro snow scene is in season while still labelled `artist:` in
+`selected_by`. Hearth uses it to show the season more often.
 
 Nothing in the API needs a key, and nothing but `/api/next` changes anything.
 

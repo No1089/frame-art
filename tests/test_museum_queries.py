@@ -121,3 +121,9 @@ def test_title_keywords_match_whole_words():
     assert fetch_art.title_matches({"title": "Rue Eugène Moussoir at Moret: Winter"}, keywords)
     assert not fetch_art.title_matches({"title": "Poplars, Eragny"}, keywords)
     assert not fetch_art.title_matches({"title": "The Police Station"}, keywords)
+
+
+def test_web_api_exposes_season():
+    import inspect
+    from web import app as web_app
+    assert '"season"' in inspect.getsource(web_app.api_works)

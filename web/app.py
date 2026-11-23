@@ -84,6 +84,10 @@ def api_works():
             # requirement even though the painting itself is public domain.
             "museum": config.MUSEUM_NAMES.get(record.get("source"), ""),
             "selected_by": record.get("selected_by", ""),
+            # The month's theme name when the work belongs to it, whether the
+            # theme or the core roster selected it; "" otherwise. A slideshow
+            # can use it to show the season more often.
+            "season": record.get("season", ""),
         })
     return jsonify(out)
 
