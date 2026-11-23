@@ -464,18 +464,35 @@ def slugify(text, max_length=60):
     return slug.strip("-")[:max_length] or "untitled"
 
 
+def looks_like_image(head):
+    """True for JPEG, PNG, GIF, WebP or TIFF magic bytes."""
+    return (head.startswith(b"\xff\xd8\xff") or head.startswith(b"\x89PNG")
+            or head.startswith(b"GIF8") or head[8:12] == b"WEBP"
+            or head[:4] in (b"II*\x00", b"MM\x00*"))
+
+
 def download(record, raw_dir):
     filename = (f"{slugify(record['artist'], 30)}__"
                 f"{slugify(record['title'], 50)}__"
                 f"{record['source']}-{record['source_id']}.jpg")
     path = raw_dir / filename
-    if path.exists():
+    if path.exists() and looks_like_image(path.read_bytes()[:16]):
         record["raw_path"] = str(path)
         return True
     try:
         response = _get(record["image_url"], stream=True)
     except requests.RequestException as error:
         print(f"  download failed: {record['title']}: {error}")
+        return False
+    # Image CDNs answer a bot check with a 200 and an HTML page (the Met's
+    # Imperva does, Nov 2026). Saved as .jpg it would be listed as a work and
+    # break every page that shows it, so anything that is not an image is
+    # dropped here and retried on the next run.
+    if not looks_like_image(response.content[:16]):
+        kind = response.headers.get("Content-Type", "?")
+        print(f"  download failed: {record['title']}: not an image ({kind})")
+        if path.exists():
+            path.unlink()
         return False
     path.write_bytes(response.content)
     record["raw_path"] = str(path)

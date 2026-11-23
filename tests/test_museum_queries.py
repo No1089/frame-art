@@ -127,3 +127,10 @@ def test_web_api_exposes_season():
     import inspect
     from web import app as web_app
     assert '"season"' in inspect.getsource(web_app.api_works)
+
+
+def test_bot_check_pages_are_not_images():
+    import fetch_art
+    assert fetch_art.looks_like_image(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01")
+    assert fetch_art.looks_like_image(b"\x89PNG\r\n\x1a\n\x00\x00")
+    assert not fetch_art.looks_like_image(b'<html style="heig')
