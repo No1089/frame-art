@@ -462,8 +462,14 @@ UPLOAD_MANIFEST_FILE = "./library/uploaded.json"
 #                  is empty
 #   artist_hints   representative painters; for met and cma these carry the
 #                  precision that the missing subject facet cannot
-#   title_keywords optional; met and cma results are kept only when the
-#                  title contains one of these words (AIC is not filtered)
+#   title_keywords optional; results are kept only when the title has one
+#                  of these words (AIC is exempt when it matched aic_subjects)
+#   aic_artists    optional; AIC results must be by one of these
+#   aic_place      optional; AIC place_of_origin must match, e.g. "Japan"
+#   artwork_types  optional; replaces ARTWORK_TYPES for this theme or part
+#   limit          optional; per source, in place of MAX_PER_THEME_PER_SOURCE
+#   also           optional list of parts, each a preset of its own (with a
+#                  "part" name for the log) searched under the same theme
 
 THEME_ENABLED = True
 
@@ -472,6 +478,14 @@ THEME_ENABLED = True
 # well below this anyway.
 MAX_PER_THEME_PER_SOURCE = 25
 
+# Snow words for title_keywords. Month names only where a work is a painting
+# (Pelouse's "January: Cernay"); on prints they bring in Washington crossing
+# the Delaware and clipper ship passages dated December.
+SNOW_WORDS = ["winter", "snow", "snowy", "frost", "skating", "skaters",
+              "sleigh", "sleighing"]
+WINTER_WORDS = SNOW_WORDS + ["ice", "icebound", "january", "february",
+                             "december"]
+
 THEMES = {
     1: {
         "name": "winter light",
@@ -479,9 +493,7 @@ THEMES = {
         # Met and Cleveland have no subject facet, so their artist hint
         # queries return the hinted painters' summers too. Keep only titles
         # that say winter. AIC is matched on subject and is not filtered.
-        "title_keywords": ["winter", "snow", "frost", "ice", "icebound",
-                           "skating", "skaters", "sleigh", "january",
-                           "february", "december"],
+        "title_keywords": WINTER_WORDS,
         "year_from": 1600, "year_to": 1950,
         "aic_subjects": ["winter", "snow"],
         "met_departments": ["European Paintings"],
@@ -601,14 +613,68 @@ THEMES = {
                          "Utagawa Hiroshige"],
     },
     12: {
-        "name": "night and interiors",
-        "terms": ["night interior lamplight evening"],
+        # Asked for: more snow, and Christmas colours. The
+        # Impressionist snow scenes are nearly colourless (0-3 % saturated
+        # red or green, measured on the library), so the reds and greens
+        # come from the three parts under "also".
+        "name": "snow and Christmas",
+        "terms": ["snow winter landscape"],
         "year_from": 1600, "year_to": 1950,
-        "aic_subjects": ["night", "interiors"],
+        "aic_subjects": ["winter", "snow"],
         "met_departments": ["European Paintings"],
         "cma_departments": ["European Painting and Sculpture"],
-        "artist_hints": ["James McNeill Whistler", "Edgar Degas",
-                         "Vincent van Gogh", "Vilhelm Hammershoi"],
+        "artist_hints": ["Claude Monet", "Alfred Sisley", "Camille Pissarro",
+                         "Pieter Bruegel"],
+        "title_keywords": WINTER_WORDS,
+        "also": [
+            {
+                # Frozen canals, red coated skaters.
+                "part": "Dutch skating",
+                "terms": ["skating winter ice"],
+                "year_from": 1580, "year_to": 1900,
+                "aic_artists": ["Avercamp", "Aert van der Neer",
+                                "Esaias van de Velde", "Jan van Goyen",
+                                "Isaack van Ostade", "Andreas Schelfhout",
+                                "Barend Cornelis Koekkoek"],
+                "met_departments": ["European Paintings"],
+                "cma_departments": ["European Painting and Sculpture"],
+                "artist_hints": ["Hendrick Avercamp", "Aert van der Neer",
+                                 "Esaias van de Velde", "Jan van Goyen",
+                                 "Isaack van Ostade", "Andreas Schelfhout"],
+                "title_keywords": SNOW_WORDS + ["ice", "frozen", "kolf"],
+            },
+            {
+                # Woodblock snow: red against white, and Japonisme is part
+                # of the Impressionists' own story.
+                "part": "Japanese snow prints",
+                "artwork_types": ["Print"],
+                # The Met alone has 25 snow prints; capped so they do not
+                # outnumber the paintings.
+                "limit": 10,
+                "terms": ["snow"],
+                "year_from": 1750, "year_to": 1930,
+                "aic_subjects": ["snow", "winter"],
+                "aic_place": "Japan",
+                "met_departments": ["Asian Art"],
+                "cma_departments": ["Japanese Art"],
+                "artist_hints": ["Utagawa Hiroshige", "Katsushika Hokusai",
+                                 "Kobayashi Kiyochika", "Utagawa Kuniyoshi"],
+                "title_keywords": SNOW_WORDS + ["yuki"],
+            },
+            {
+                # The most Christmassy, and the most kitsch: sleighs.
+                "part": "Victorian Christmas prints",
+                "artwork_types": ["Print"],
+                "limit": 10,
+                "terms": ["Currier Ives winter"],
+                "year_from": 1835, "year_to": 1910,
+                "aic_artists": ["Currier & Ives", "Nathaniel Currier"],
+                "met_departments": ["Drawings and Prints"],
+                "cma_departments": ["Prints"],
+                "artist_hints": ["Currier & Ives", "Nathaniel Currier"],
+                "title_keywords": SNOW_WORDS + ["christmas", "yule"],
+            },
+        ],
     },
 }
 

@@ -132,6 +132,12 @@ def aic_must(preset):
         must.append({"terms": {"style_titles.keyword": styles}})
     else:
         must.append({"match": {"term_titles": " ".join(preset["terms"])}})
+    if preset.get("aic_artists"):
+        must.append({"bool": {"minimum_should_match": 1, "should": [
+            {"match_phrase": {"artist_title": name}}
+            for name in preset["aic_artists"]]}})
+    if preset.get("aic_place"):
+        must.append({"match": {"place_of_origin": preset["aic_place"]}})
     return must
 
 
@@ -543,20 +549,30 @@ def main():
             [("category", key, CATEGORY_SEARCHERS, config.CATEGORIES[key],
               core_limit) for key in categories] +
             [("theme", config.THEMES[m]["name"], CATEGORY_SEARCHERS,
-              config.THEMES[m], config.MAX_PER_THEME_PER_SOURCE)
-             for m in months])
+              preset, preset.get("limit", config.MAX_PER_THEME_PER_SOURCE))
+             for m in months
+             for preset in [config.THEMES[m]] + config.THEMES[m].get("also", [])])
 
     for kind, label, searchers, argument, limit in jobs:
         for source in sources:
-            print(f"[{source}] {kind}: {label}")
+            part = argument.get("part") if isinstance(argument, dict) else None
+            print(f"[{source}] {kind}: {label}" + (f" / {part}" if part else ""))
+            # A theme part may widen ARTWORK_TYPES, e.g. to woodblock prints.
+            saved_types = config.ARTWORK_TYPES
+            if isinstance(argument, dict) and argument.get("artwork_types"):
+                config.ARTWORK_TYPES = argument["artwork_types"]
             try:
                 found = searchers[source](argument, limit)
             except requests.RequestException as error:
                 print(f"  search failed: {error}")
                 continue
+            finally:
+                config.ARTWORK_TYPES = saved_types
             print(f"  {len(found)} candidates")
 
-            if kind == "theme" and source != "aic" and argument.get("title_keywords"):
+            # AIC is exempt when it matched on subject, which is already exact.
+            aic_exact = source == "aic" and argument.get("aic_subjects") if kind == "theme" else True
+            if kind == "theme" and not aic_exact and argument.get("title_keywords"):
                 kept = [r for r in found if title_matches(r, argument["title_keywords"])]
                 print(f"  {len(kept)} after the title filter")
                 found = kept

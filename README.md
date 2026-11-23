@@ -481,6 +481,17 @@ promising at 117 works but is almost entirely Madonnas and Holy Families, so
 it is deliberately excluded. What is left leans on `love` and `couples`, and
 still admits the occasional Botticelli Virgin.
 
+A theme can also carry `also`, a list of **parts**, each a preset of its
+own searched under the same theme name. December ("snow and Christmas") uses
+three: Dutch skating scenes, Japanese snow prints and Currier & Ives winter
+prints, because the Impressionist snow scenes are nearly colourless (0 to 3
+percent saturated red or green, measured on the library) and Christmas
+colours have to come from somewhere. A part may widen `artwork_types` (the
+two print parts allow `Print`), cap itself with `limit`, and narrow AIC with
+`aic_artists` or `aic_place`. `title_keywords` keeps Met and Cleveland
+results on topic; keep month names out of it for prints, where they match
+historical scenes dated December rather than winter ones.
+
 Rotation depends on `--prune`, which reconciles the device against the
 **catalogue** rather than the manifest. The manifest accumulates every work
 ever uploaded, so pruning against it would never retire last month's theme.
