@@ -63,6 +63,12 @@ ARTWORK_TYPES = ["Painting", "Drawing and Watercolor"]
 # not Monet.
 EXCLUDED_ARTISTS = ["Manet"]
 
+# Single works never collected, by the gallery id (<source>-<source id>, as
+# in /api/works and /img/<id>), each with a note of what it is.
+EXCLUDED_WORKS = {
+    "aic-154121": "Caillebotte, Calf's Head and Ox Tongue (meat on hooks)",
+}
+
 # Reject anything whose native long edge is below this many pixels.
 MIN_SOURCE_LONG_EDGE_PX = 1400
 

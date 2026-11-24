@@ -597,6 +597,8 @@ def main():
             for record in found:
                 if artist_excluded(record["artist"]):
                     continue
+                if f"{record['source']}-{record['source_id']}" in getattr(config, "EXCLUDED_WORKS", {}):
+                    continue
                 key = (slugify(record["artist"], 30), slugify(record["title"], 50))
                 if key in seen_keys:
                     # A core work the theme also found is in season too,

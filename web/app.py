@@ -68,6 +68,10 @@ def api_works():
         raw = record.get("raw_path")
         if not raw:
             continue
+        # Also checked here so an exclusion takes effect at once, not at the
+        # next monthly fetch.
+        if work_id(record) in getattr(config, "EXCLUDED_WORKS", {}):
+            continue
         if not (ROOT / raw if not Path(raw).is_absolute() else Path(raw)).exists():
             continue
         out.append({
